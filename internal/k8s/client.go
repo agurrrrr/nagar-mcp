@@ -2,6 +2,9 @@ package k8s
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -11,6 +14,17 @@ import (
 
 	"nagar-mcp/internal/config"
 )
+
+// expandPath expands ~ to home directory
+func expandPath(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			return filepath.Join(home, path[2:])
+		}
+	}
+	return path
+}
 
 // Client wraps Kubernetes clients
 type Client struct {
@@ -27,8 +41,9 @@ func NewClient(cfg config.KubernetesConfig) (*Client, error) {
 
 	if cfg.Kubeconfig != "" {
 		// Build config from kubeconfig file
+		kubeconfigPath := expandPath(cfg.Kubeconfig)
 		loadingRules := &clientcmd.ClientConfigLoadingRules{
-			ExplicitPath: cfg.Kubeconfig,
+			ExplicitPath: kubeconfigPath,
 		}
 		configOverrides := &clientcmd.ConfigOverrides{}
 		if cfg.Context != "" {
