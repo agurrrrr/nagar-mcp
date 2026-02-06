@@ -11,7 +11,7 @@ import (
 
 // ClusterResourcesInput contains optional type filter
 type ClusterResourcesInput struct {
-	Type string `json:"type,omitempty" jsonschema:"description=리소스 타입 필터 (vm|storage|node),enum=vm,enum=storage,enum=node"`
+	Type string `json:"type,omitempty" jsonschema:"리소스 타입 필터 (vm|storage|node),enum=vm,enum=storage,enum=node"`
 }
 
 // ClusterResourcesOutput contains cluster resources
@@ -41,7 +41,7 @@ type NodeStatus struct {
 
 // ListStorageInput contains node name
 type ListStorageInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListStorageOutput contains storage list
@@ -51,8 +51,8 @@ type ListStorageOutput struct {
 
 // StorageContentInput contains node and storage name
 type StorageContentInput struct {
-	Node    string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	Storage string `json:"storage" jsonschema:"description=스토리지 이름"`
+	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Storage string `json:"storage" jsonschema:"스토리지 이름"`
 }
 
 // StorageContentOutput contains storage content

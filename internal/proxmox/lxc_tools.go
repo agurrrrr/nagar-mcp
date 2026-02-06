@@ -11,7 +11,7 @@ import (
 
 // ListLXCInput contains the node name
 type ListLXCInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListLXCOutput contains the list of LXC containers
@@ -21,8 +21,8 @@ type ListLXCOutput struct {
 
 // LXCStatusInput contains node and vmid
 type LXCStatusInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=LXC 컨테이너 ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
 }
 
 // LXCStatusOutput contains detailed LXC status
@@ -39,8 +39,8 @@ type LXCStatusOutput struct {
 
 // LXCConfigInput contains node and vmid
 type LXCConfigInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=LXC 컨테이너 ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
 }
 
 // LXCConfigOutput contains LXC configuration

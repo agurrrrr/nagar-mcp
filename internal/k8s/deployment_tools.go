@@ -12,7 +12,7 @@ import (
 
 // ListDeploymentsInput contains optional namespace
 type ListDeploymentsInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"description=네임스페이스 (비어있으면 모든 네임스페이스)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
 }
 
 // ListDeploymentsOutput contains list of deployments
@@ -22,8 +22,8 @@ type ListDeploymentsOutput struct {
 
 // DeploymentStatusInput contains deployment identifiers
 type DeploymentStatusInput struct {
-	Namespace string `json:"namespace" jsonschema:"description=네임스페이스"`
-	Name      string `json:"name" jsonschema:"description=Deployment 이름"`
+	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
+	Name      string `json:"name" jsonschema:"Deployment 이름"`
 }
 
 // DeploymentStatusOutput contains detailed deployment status

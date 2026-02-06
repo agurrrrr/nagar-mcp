@@ -30,7 +30,7 @@ type ListNodesOutput struct {
 
 // NodeStatusInput contains the node name
 type NodeStatusInput struct {
-	Node string `json:"node" jsonschema:"description=Kubernetes 노드 이름"`
+	Node string `json:"node" mcp:"description:Kubernetes 노드 이름"`
 }
 
 // NodeStatusOutput contains detailed node status

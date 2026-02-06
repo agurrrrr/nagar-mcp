@@ -12,8 +12,8 @@ import (
 
 // NodeRRDInput contains parameters for node RRD data query
 type NodeRRDInput struct {
-	Node      string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	Timeframe string `json:"timeframe" jsonschema:"description=데이터 기간 (hour, day, week, month, year)"`
+	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
 }
 
 // NodeRRDOutput contains RRD data for a node
@@ -41,9 +41,9 @@ type RRDNodeDataPoint struct {
 
 // VMRRDInput contains parameters for VM RRD data query
 type VMRRDInput struct {
-	Node      string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID      int    `json:"vmid" jsonschema:"description=VM ID"`
-	Timeframe string `json:"timeframe" jsonschema:"description=데이터 기간 (hour, day, week, month, year)"`
+	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID      int    `json:"vmid" jsonschema:"VM ID"`
+	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
 }
 
 // VMRRDOutput contains RRD data for a VM
@@ -70,9 +70,9 @@ type RRDVMDataPoint struct {
 
 // LXCRRDInput contains parameters for LXC RRD data query
 type LXCRRDInput struct {
-	Node      string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID      int    `json:"vmid" jsonschema:"description=LXC 컨테이너 ID"`
-	Timeframe string `json:"timeframe" jsonschema:"description=데이터 기간 (hour, day, week, month, year)"`
+	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID      int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
+	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
 }
 
 // LXCRRDOutput contains RRD data for an LXC container
@@ -99,9 +99,9 @@ type RRDLXCDataPoint struct {
 
 // StorageRRDInput contains parameters for storage RRD data query
 type StorageRRDInput struct {
-	Node      string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	Storage   string `json:"storage" jsonschema:"description=스토리지 이름"`
-	Timeframe string `json:"timeframe" jsonschema:"description=데이터 기간 (hour, day, week, month, year)"`
+	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Storage   string `json:"storage" jsonschema:"스토리지 이름"`
+	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
 }
 
 // StorageRRDOutput contains RRD data for storage

@@ -11,7 +11,7 @@ import (
 
 // ListVMsInput contains the node name
 type ListVMsInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListVMsOutput contains the list of VMs
@@ -21,8 +21,8 @@ type ListVMsOutput struct {
 
 // VMStatusInput contains node and vmid
 type VMStatusInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=VM ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
 // VMStatusOutput contains detailed VM status
@@ -47,8 +47,8 @@ type VMStatusOutput struct {
 
 // VMConfigInput contains node and vmid
 type VMConfigInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=VM ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
 // VMConfigOutput contains VM configuration
@@ -80,6 +80,7 @@ func toolErrorfFor[Out any](format string, args ...any) *mcp.CallToolResultFor[O
 
 func toolSuccessFor[Out any](output Out) *mcp.CallToolResultFor[Out] {
 	return &mcp.CallToolResultFor[Out]{
+		Content:           []mcp.Content{},
 		StructuredContent: output,
 	}
 }

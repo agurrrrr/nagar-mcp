@@ -11,7 +11,7 @@ import (
 
 // CephStatusInput contains the node name
 type CephStatusInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // CephStatusOutput contains Ceph cluster status
@@ -63,7 +63,7 @@ type CephMonMapOutput struct {
 
 // ListCephOSDInput contains the node name
 type ListCephOSDInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListCephOSDOutput contains list of OSDs
@@ -89,7 +89,7 @@ type CephOSDDetail struct {
 
 // ListCephPoolInput contains the node name
 type ListCephPoolInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListCephPoolOutput contains list of Ceph pools
@@ -111,7 +111,7 @@ type CephPoolDetail struct {
 
 // ListCephMonInput contains the node name
 type ListCephMonInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListCephMonOutput contains list of Ceph monitors
@@ -129,7 +129,7 @@ type CephMonDetail struct {
 
 // ListCephMDSInput contains the node name
 type ListCephMDSInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListCephMDSOutput contains list of MDS daemons
@@ -147,7 +147,7 @@ type CephMDSDetail struct {
 
 // ListCephFSInput contains the node name
 type ListCephFSInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
 }
 
 // ListCephFSOutput contains list of CephFS filesystems

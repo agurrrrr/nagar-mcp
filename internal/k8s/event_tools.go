@@ -12,8 +12,8 @@ import (
 
 // ListEventsInput contains optional namespace and limit
 type ListEventsInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"description=네임스페이스 (비어있으면 모든 네임스페이스)"`
-	Limit     int64  `json:"limit,omitempty" jsonschema:"description=최대 이벤트 수 (기본 50)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
+	Limit     int64  `json:"limit,omitempty" jsonschema:"최대 이벤트 수 (기본 50)"`
 }
 
 // ListEventsOutput contains list of events

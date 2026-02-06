@@ -12,7 +12,7 @@ import (
 
 // TaskStatusInput contains upid
 type TaskStatusInput struct {
-	UPID string `json:"upid" jsonschema:"description=태스크 UPID"`
+	UPID string `json:"upid" jsonschema:"태스크 UPID"`
 }
 
 // TaskStatusOutput contains task status
@@ -30,9 +30,9 @@ type TaskStatusOutput struct {
 
 // TaskLogInput contains upid
 type TaskLogInput struct {
-	UPID  string `json:"upid" jsonschema:"description=태스크 UPID"`
-	Start int    `json:"start,omitempty" jsonschema:"description=시작 라인 (기본 0)"`
-	Limit int    `json:"limit,omitempty" jsonschema:"description=최대 라인 수 (기본 50)"`
+	UPID  string `json:"upid" jsonschema:"태스크 UPID"`
+	Start int    `json:"start,omitempty" jsonschema:"시작 라인 (기본 0)"`
+	Limit int    `json:"limit,omitempty" jsonschema:"최대 라인 수 (기본 50)"`
 }
 
 // TaskLogOutput contains task log

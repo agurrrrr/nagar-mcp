@@ -12,7 +12,7 @@ import (
 
 // ListServicesInput contains optional namespace
 type ListServicesInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"description=네임스페이스 (비어있으면 모든 네임스페이스)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
 }
 
 // ListServicesOutput contains list of services
@@ -22,8 +22,8 @@ type ListServicesOutput struct {
 
 // ServiceStatusInput contains service identifiers
 type ServiceStatusInput struct {
-	Namespace string `json:"namespace" jsonschema:"description=네임스페이스"`
-	Name      string `json:"name" jsonschema:"description=Service 이름"`
+	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
+	Name      string `json:"name" jsonschema:"Service 이름"`
 }
 
 // ServiceStatusOutput contains detailed service status

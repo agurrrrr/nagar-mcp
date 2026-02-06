@@ -13,7 +13,7 @@ import (
 
 // ListPodsInput contains optional namespace
 type ListPodsInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"description=네임스페이스 (비어있으면 모든 네임스페이스)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
 }
 
 // ListPodsOutput contains list of pods
@@ -23,8 +23,8 @@ type ListPodsOutput struct {
 
 // PodStatusInput contains pod identifiers
 type PodStatusInput struct {
-	Namespace string `json:"namespace" jsonschema:"description=네임스페이스"`
-	Name      string `json:"name" jsonschema:"description=Pod 이름"`
+	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
+	Name      string `json:"name" jsonschema:"Pod 이름"`
 }
 
 // PodStatusOutput contains detailed pod status
@@ -34,10 +34,10 @@ type PodStatusOutput struct {
 
 // PodLogsInput contains parameters for pod logs
 type PodLogsInput struct {
-	Namespace string `json:"namespace" jsonschema:"description=네임스페이스"`
-	Name      string `json:"name" jsonschema:"description=Pod 이름"`
-	Container string `json:"container,omitempty" jsonschema:"description=컨테이너 이름 (멀티 컨테이너 Pod인 경우)"`
-	TailLines int64  `json:"tail_lines,omitempty" jsonschema:"description=가져올 라인 수 (기본 100)"`
+	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
+	Name      string `json:"name" jsonschema:"Pod 이름"`
+	Container string `json:"container,omitempty" jsonschema:"컨테이너 이름 (멀티 컨테이너 Pod인 경우)"`
+	TailLines int64  `json:"tail_lines,omitempty" jsonschema:"가져올 라인 수 (기본 100)"`
 }
 
 // PodLogsOutput contains pod logs

@@ -23,6 +23,7 @@ func toolErrorfFor[Out any](format string, args ...any) *mcp.CallToolResultFor[O
 
 func toolSuccessFor[Out any](output Out) *mcp.CallToolResultFor[Out] {
 	return &mcp.CallToolResultFor[Out]{
+		Content:           []mcp.Content{},
 		StructuredContent: output,
 	}
 }

@@ -11,8 +11,8 @@ import (
 
 // LXCStartInput contains parameters for starting an LXC container
 type LXCStartInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=LXC 컨테이너 ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
 }
 
 // LXCStartOutput contains the result of starting an LXC container
@@ -23,9 +23,9 @@ type LXCStartOutput struct {
 
 // LXCStopInput contains parameters for stopping an LXC container
 type LXCStopInput struct {
-	Node    string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID    int    `json:"vmid" jsonschema:"description=LXC 컨테이너 ID"`
-	Confirm bool   `json:"confirm" jsonschema:"description=true로 설정해야 실제 정지 실행"`
+	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID    int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
+	Confirm bool   `json:"confirm" jsonschema:"true로 설정해야 실제 정지 실행"`
 }
 
 // LXCStopOutput contains the result of stopping an LXC container
@@ -36,9 +36,9 @@ type LXCStopOutput struct {
 
 // LXCShutdownInput contains parameters for gracefully shutting down an LXC container
 type LXCShutdownInput struct {
-	Node    string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID    int    `json:"vmid" jsonschema:"description=LXC 컨테이너 ID"`
-	Timeout int    `json:"timeout,omitempty" jsonschema:"description=종료 대기 시간 (초)"`
+	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID    int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
+	Timeout int    `json:"timeout,omitempty" jsonschema:"종료 대기 시간 (초)"`
 }
 
 // LXCShutdownOutput contains the result of shutting down an LXC container
@@ -49,8 +49,8 @@ type LXCShutdownOutput struct {
 
 // LXCRebootInput contains parameters for rebooting an LXC container
 type LXCRebootInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=LXC 컨테이너 ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
 }
 
 // LXCRebootOutput contains the result of rebooting an LXC container

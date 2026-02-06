@@ -11,8 +11,8 @@ import (
 
 // VMStartInput contains parameters for starting a VM
 type VMStartInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=VM ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
 // VMStartOutput contains the result of starting a VM
@@ -23,9 +23,9 @@ type VMStartOutput struct {
 
 // VMStopInput contains parameters for stopping a VM
 type VMStopInput struct {
-	Node    string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID    int    `json:"vmid" jsonschema:"description=VM ID"`
-	Confirm bool   `json:"confirm" jsonschema:"description=true로 설정해야 실제 정지 실행 (데이터 손실 위험)"`
+	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID    int    `json:"vmid" jsonschema:"VM ID"`
+	Confirm bool   `json:"confirm" jsonschema:"true로 설정해야 실제 정지 실행 (데이터 손실 위험)"`
 }
 
 // VMStopOutput contains the result of stopping a VM
@@ -36,9 +36,9 @@ type VMStopOutput struct {
 
 // VMShutdownInput contains parameters for gracefully shutting down a VM
 type VMShutdownInput struct {
-	Node    string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID    int    `json:"vmid" jsonschema:"description=VM ID"`
-	Timeout int    `json:"timeout,omitempty" jsonschema:"description=종료 대기 시간 (초)"`
+	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID    int    `json:"vmid" jsonschema:"VM ID"`
+	Timeout int    `json:"timeout,omitempty" jsonschema:"종료 대기 시간 (초)"`
 }
 
 // VMShutdownOutput contains the result of shutting down a VM
@@ -49,8 +49,8 @@ type VMShutdownOutput struct {
 
 // VMRebootInput contains parameters for rebooting a VM
 type VMRebootInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=VM ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
 // VMRebootOutput contains the result of rebooting a VM
@@ -61,8 +61,8 @@ type VMRebootOutput struct {
 
 // VMSnapshotListInput contains parameters for listing VM snapshots
 type VMSnapshotListInput struct {
-	Node string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"description=VM ID"`
+	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
 // VMSnapshotListOutput contains the list of VM snapshots
@@ -72,10 +72,10 @@ type VMSnapshotListOutput struct {
 
 // VMSnapshotCreateInput contains parameters for creating a VM snapshot
 type VMSnapshotCreateInput struct {
-	Node        string `json:"node" jsonschema:"description=Proxmox 노드 이름"`
-	VMID        int    `json:"vmid" jsonschema:"description=VM ID"`
-	Name        string `json:"name" jsonschema:"description=스냅샷 이름"`
-	Description string `json:"description,omitempty" jsonschema:"description=스냅샷 설명"`
+	Node        string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	VMID        int    `json:"vmid" jsonschema:"VM ID"`
+	Name        string `json:"name" jsonschema:"스냅샷 이름"`
+	Description string `json:"description,omitempty" jsonschema:"스냅샷 설명"`
 }
 
 // VMSnapshotCreateOutput contains the result of creating a VM snapshot

@@ -15,9 +15,9 @@ import (
 
 // ScaleDeploymentInput contains parameters for scaling a deployment
 type ScaleDeploymentInput struct {
-	Namespace string `json:"namespace" jsonschema:"description=네임스페이스"`
-	Name      string `json:"name" jsonschema:"description=Deployment 이름"`
-	Replicas  int32  `json:"replicas" jsonschema:"description=원하는 레플리카 수"`
+	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
+	Name      string `json:"name" jsonschema:"Deployment 이름"`
+	Replicas  int32  `json:"replicas" jsonschema:"원하는 레플리카 수"`
 }
 
 // ScaleDeploymentOutput contains the result of scaling
@@ -31,8 +31,8 @@ type ScaleDeploymentOutput struct {
 
 // RestartDeploymentInput contains parameters for restarting a deployment
 type RestartDeploymentInput struct {
-	Namespace string `json:"namespace" jsonschema:"description=네임스페이스"`
-	Name      string `json:"name" jsonschema:"description=Deployment 이름"`
+	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
+	Name      string `json:"name" jsonschema:"Deployment 이름"`
 }
 
 // RestartDeploymentOutput contains the result of restarting
@@ -44,9 +44,9 @@ type RestartDeploymentOutput struct {
 
 // DeletePodInput contains parameters for deleting a pod
 type DeletePodInput struct {
-	Namespace string `json:"namespace" jsonschema:"description=네임스페이스"`
-	Name      string `json:"name" jsonschema:"description=Pod 이름"`
-	Force     bool   `json:"force,omitempty" jsonschema:"description=강제 삭제 여부 (GracePeriod=0)"`
+	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
+	Name      string `json:"name" jsonschema:"Pod 이름"`
+	Force     bool   `json:"force,omitempty" jsonschema:"강제 삭제 여부 (GracePeriod=0)"`
 }
 
 // DeletePodOutput contains the result of deleting a pod
@@ -58,8 +58,8 @@ type DeletePodOutput struct {
 
 // CreateNamespaceInput contains parameters for creating a namespace
 type CreateNamespaceInput struct {
-	Name   string            `json:"name" jsonschema:"description=네임스페이스 이름"`
-	Labels map[string]string `json:"labels,omitempty" jsonschema:"description=레이블"`
+	Name   string            `json:"name" jsonschema:"네임스페이스 이름"`
+	Labels map[string]string `json:"labels,omitempty" jsonschema:"레이블"`
 }
 
 // CreateNamespaceOutput contains the result of creating a namespace
@@ -70,7 +70,7 @@ type CreateNamespaceOutput struct {
 
 // DeleteNamespaceInput contains parameters for deleting a namespace
 type DeleteNamespaceInput struct {
-	Name string `json:"name" jsonschema:"description=네임스페이스 이름"`
+	Name string `json:"name" jsonschema:"네임스페이스 이름"`
 }
 
 // DeleteNamespaceOutput contains the result of deleting a namespace
@@ -81,7 +81,7 @@ type DeleteNamespaceOutput struct {
 
 // CordonNodeInput contains parameters for cordoning a node
 type CordonNodeInput struct {
-	Node string `json:"node" jsonschema:"description=노드 이름"`
+	Node string `json:"node" jsonschema:"노드 이름"`
 }
 
 // CordonNodeOutput contains the result of cordoning
@@ -92,7 +92,7 @@ type CordonNodeOutput struct {
 
 // UncordonNodeInput contains parameters for uncordoning a node
 type UncordonNodeInput struct {
-	Node string `json:"node" jsonschema:"description=노드 이름"`
+	Node string `json:"node" jsonschema:"노드 이름"`
 }
 
 // UncordonNodeOutput contains the result of uncordoning
