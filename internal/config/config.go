@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Proxmox    ProxmoxConfig    `yaml:"proxmox"`
 	Kubernetes KubernetesConfig `yaml:"kubernetes"`
+	OPNsense   OPNsenseConfig   `yaml:"opnsense"`
 	Server     ServerConfig     `yaml:"server"`
 }
 
@@ -28,6 +29,14 @@ type ProxmoxConfig struct {
 type KubernetesConfig struct {
 	Kubeconfig string `yaml:"kubeconfig"`
 	Context    string `yaml:"context"`
+}
+
+// OPNsenseConfig holds OPNsense connection settings
+type OPNsenseConfig struct {
+	URL         string `yaml:"url"`
+	APIKey      string `yaml:"api_key"`
+	APISecret   string `yaml:"api_secret"`
+	InsecureTLS bool   `yaml:"insecure_tls"`
 }
 
 // ServerConfig holds MCP server settings
@@ -76,6 +85,20 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if v := os.Getenv("PVE_INSECURE_TLS"); v != "" {
 		c.Proxmox.InsecureTLS = v == "true" || v == "1"
+	}
+
+	// OPNsense overrides
+	if v := os.Getenv("OPS_URL"); v != "" {
+		c.OPNsense.URL = v
+	}
+	if v := os.Getenv("OPS_API_KEY"); v != "" {
+		c.OPNsense.APIKey = v
+	}
+	if v := os.Getenv("OPS_API_SECRET"); v != "" {
+		c.OPNsense.APISecret = v
+	}
+	if v := os.Getenv("OPS_INSECURE_TLS"); v != "" {
+		c.OPNsense.InsecureTLS = v == "true" || v == "1"
 	}
 
 	// Kubernetes overrides
@@ -140,6 +163,16 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// OPNsense validation (optional)
+	if c.OPNsense.URL != "" {
+		if c.OPNsense.APIKey == "" {
+			return fmt.Errorf("opnsense api_key is required when url is set")
+		}
+		if c.OPNsense.APISecret == "" {
+			return fmt.Errorf("opnsense api_secret is required when url is set")
+		}
+	}
+
 	// Server validation
 	if c.Server.Transport != "stdio" && c.Server.Transport != "http" {
 		return fmt.Errorf("invalid transport: %s (must be 'stdio' or 'http')", c.Server.Transport)
@@ -151,6 +184,11 @@ func (c *Config) Validate() error {
 // HasProxmox returns true if Proxmox is configured
 func (c *Config) HasProxmox() bool {
 	return c.Proxmox.URL != "" && c.Proxmox.TokenID != "" && c.Proxmox.Secret != ""
+}
+
+// HasOPNsense returns true if OPNsense is configured
+func (c *Config) HasOPNsense() bool {
+	return c.OPNsense.URL != "" && c.OPNsense.APIKey != "" && c.OPNsense.APISecret != ""
 }
 
 // HasKubernetes returns true if Kubernetes is configured

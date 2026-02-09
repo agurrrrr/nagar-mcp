@@ -10,6 +10,7 @@ import (
 
 	"nagar-mcp/internal/config"
 	"nagar-mcp/internal/k8s"
+	"nagar-mcp/internal/opnsense"
 	"nagar-mcp/internal/proxmox"
 )
 
@@ -19,6 +20,7 @@ type Server struct {
 	config    *config.Config
 	pveClient *proxmox.Client
 	k8sClient *k8s.Client
+	opsClient *opnsense.Client
 }
 
 // New creates a new MCP server with all providers
@@ -45,6 +47,17 @@ func New(cfg *config.Config) (*Server, error) {
 		}
 	}
 
+	// Initialize OPNsense client if configured
+	if cfg.HasOPNsense() {
+		opsClient, err := opnsense.NewClient(cfg.OPNsense)
+		if err != nil {
+			slog.Warn("failed to create OPNsense client", "error", err)
+		} else {
+			server.opsClient = opsClient
+			slog.Info("OPNsense client initialized", "url", cfg.OPNsense.URL)
+		}
+	}
+
 	// Initialize Kubernetes client if configured
 	if cfg.HasKubernetes() {
 		k8sClient, err := k8s.NewClient(cfg.Kubernetes)
@@ -68,6 +81,12 @@ func (s *Server) registerTools() {
 	if s.pveClient != nil {
 		proxmox.RegisterTools(s.mcpServer, s.pveClient)
 		slog.Info("Proxmox tools registered")
+	}
+
+	// Register OPNsense tools if client is available
+	if s.opsClient != nil {
+		opnsense.RegisterTools(s.mcpServer, s.opsClient)
+		slog.Info("OPNsense tools registered")
 	}
 
 	// Register Kubernetes tools if client is available
