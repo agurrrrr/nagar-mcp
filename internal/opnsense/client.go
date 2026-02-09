@@ -69,7 +69,9 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (json.Ra
 	}
 
 	req.SetBasicAuth(c.apiKey, c.apiSecret)
-	req.Header.Set("Content-Type", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
