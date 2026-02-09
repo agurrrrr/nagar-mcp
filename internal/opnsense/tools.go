@@ -37,4 +37,5 @@ func RegisterTools(server *mcp.Server, client *Client) {
 	registerServiceTools(server, client)
 	registerWireGuardTools(server, client)
 	registerHAProxyTools(server, client)
+	registerNATTools(server, client)
 }
