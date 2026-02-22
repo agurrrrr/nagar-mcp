@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"nagar-mcp/internal/config"
+	"github.com/agurrrrr/nagar-mcp/internal/config"
 )
 
 // expandPath expands ~ to home directory

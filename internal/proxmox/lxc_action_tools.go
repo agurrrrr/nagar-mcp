@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -11,8 +12,8 @@ import (
 
 // LXCStartInput contains parameters for starting an LXC container
 type LXCStartInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
+	VMID int    `json:"vmid" jsonschema:"LXC container ID"`
 }
 
 // LXCStartOutput contains the result of starting an LXC container
@@ -23,9 +24,9 @@ type LXCStartOutput struct {
 
 // LXCStopInput contains parameters for stopping an LXC container
 type LXCStopInput struct {
-	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	VMID    int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
-	Confirm bool   `json:"confirm" jsonschema:"true로 설정해야 실제 정지 실행"`
+	Node    string `json:"node" jsonschema:"Proxmox node name"`
+	VMID    int    `json:"vmid" jsonschema:"LXC container ID"`
+	Confirm bool   `json:"confirm" jsonschema:"Must be set to true to execute stop"`
 }
 
 // LXCStopOutput contains the result of stopping an LXC container
@@ -36,9 +37,9 @@ type LXCStopOutput struct {
 
 // LXCShutdownInput contains parameters for gracefully shutting down an LXC container
 type LXCShutdownInput struct {
-	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	VMID    int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
-	Timeout int    `json:"timeout,omitempty" jsonschema:"종료 대기 시간 (초)"`
+	Node    string `json:"node" jsonschema:"Proxmox node name"`
+	VMID    int    `json:"vmid" jsonschema:"LXC container ID"`
+	Timeout int    `json:"timeout,omitempty" jsonschema:"Shutdown timeout in seconds"`
 }
 
 // LXCShutdownOutput contains the result of shutting down an LXC container
@@ -49,8 +50,8 @@ type LXCShutdownOutput struct {
 
 // LXCRebootInput contains parameters for rebooting an LXC container
 type LXCRebootInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	VMID int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
+	VMID int    `json:"vmid" jsonschema:"LXC container ID"`
 }
 
 // LXCRebootOutput contains the result of rebooting an LXC container
@@ -66,13 +67,13 @@ func createLXCStartHandler(client *Client) mcp.ToolHandlerFor[LXCStartInput, LXC
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[LXCStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[LXCStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -80,7 +81,7 @@ func createLXCStartHandler(client *Client) mcp.ToolHandlerFor[LXCStartInput, LXC
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -88,7 +89,7 @@ func createLXCStartHandler(client *Client) mcp.ToolHandlerFor[LXCStartInput, LXC
 		ct, err := node.Container(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -96,7 +97,7 @@ func createLXCStartHandler(client *Client) mcp.ToolHandlerFor[LXCStartInput, LXC
 		task, err := ct.Start(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 시작 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to start LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -104,7 +105,7 @@ func createLXCStartHandler(client *Client) mcp.ToolHandlerFor[LXCStartInput, LXC
 		return &mcp.CallToolResultFor[LXCStartOutput]{
 			StructuredContent: LXCStartOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("LXC %d 시작 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("LXC %d start requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -115,26 +116,26 @@ func createLXCStopHandler(client *Client) mcp.ToolHandlerFor[LXCStopInput, LXCSt
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[LXCStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[LXCStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if !input.Confirm {
 			return &mcp.CallToolResultFor[LXCStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "⚠️ LXC 강제 정지는 데이터 손실을 유발할 수 있습니다. confirm: true를 설정해주세요. 정상 종료를 원하면 pve_lxc_shutdown을 사용하세요."}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "WARNING: Force stopping an LXC container may cause data loss. Please set confirm: true. For a graceful shutdown, use pve_lxc_shutdown."}},
 			}, nil
 		}
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -142,7 +143,7 @@ func createLXCStopHandler(client *Client) mcp.ToolHandlerFor[LXCStopInput, LXCSt
 		ct, err := node.Container(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -150,7 +151,7 @@ func createLXCStopHandler(client *Client) mcp.ToolHandlerFor[LXCStopInput, LXCSt
 		task, err := ct.Stop(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 정지 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to stop LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -158,7 +159,7 @@ func createLXCStopHandler(client *Client) mcp.ToolHandlerFor[LXCStopInput, LXCSt
 		return &mcp.CallToolResultFor[LXCStopOutput]{
 			StructuredContent: LXCStopOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("LXC %d 정지 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("LXC %d stop requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -169,13 +170,13 @@ func createLXCShutdownHandler(client *Client) mcp.ToolHandlerFor[LXCShutdownInpu
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[LXCShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[LXCShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -183,7 +184,7 @@ func createLXCShutdownHandler(client *Client) mcp.ToolHandlerFor[LXCShutdownInpu
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -191,7 +192,7 @@ func createLXCShutdownHandler(client *Client) mcp.ToolHandlerFor[LXCShutdownInpu
 		ct, err := node.Container(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -204,7 +205,7 @@ func createLXCShutdownHandler(client *Client) mcp.ToolHandlerFor[LXCShutdownInpu
 		task, err := ct.Shutdown(ctx, false, timeout)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 종료 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to shut down LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -212,7 +213,7 @@ func createLXCShutdownHandler(client *Client) mcp.ToolHandlerFor[LXCShutdownInpu
 		return &mcp.CallToolResultFor[LXCShutdownOutput]{
 			StructuredContent: LXCShutdownOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("LXC %d 정상 종료 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("LXC %d graceful shutdown requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -223,13 +224,13 @@ func createLXCRebootHandler(client *Client) mcp.ToolHandlerFor[LXCRebootInput, L
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[LXCRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[LXCRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -237,7 +238,7 @@ func createLXCRebootHandler(client *Client) mcp.ToolHandlerFor[LXCRebootInput, L
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -245,7 +246,7 @@ func createLXCRebootHandler(client *Client) mcp.ToolHandlerFor[LXCRebootInput, L
 		ct, err := node.Container(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -253,7 +254,7 @@ func createLXCRebootHandler(client *Client) mcp.ToolHandlerFor[LXCRebootInput, L
 		task, err := ct.Reboot(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[LXCRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("LXC 재시작 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to reboot LXC container: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -261,7 +262,7 @@ func createLXCRebootHandler(client *Client) mcp.ToolHandlerFor[LXCRebootInput, L
 		return &mcp.CallToolResultFor[LXCRebootOutput]{
 			StructuredContent: LXCRebootOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("LXC %d 재시작 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("LXC %d reboot requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -273,26 +274,26 @@ func registerLXCActionTools(server *mcp.Server, client *Client) {
 	// pve_lxc_start
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_lxc_start",
-		Description: "LXC 컨테이너를 시작합니다. 비동기 작업으로 UPID가 반환됩니다.",
+		Description: "Starts an LXC container. Returns a UPID for the asynchronous task.",
 	}, createLXCStartHandler(client))
 
 	// pve_lxc_stop
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_lxc_stop",
-		Description: "LXC 컨테이너를 강제 정지합니다. 데이터 손실 위험이 있으므로 confirm: true가 필요합니다.",
+		Description: "Force stops an LXC container. Requires confirm: true due to risk of data loss.",
 	}, createLXCStopHandler(client))
 
 	// pve_lxc_shutdown
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_lxc_shutdown",
-		Description: "LXC 컨테이너를 정상 종료합니다.",
+		Description: "Gracefully shuts down an LXC container.",
 	}, createLXCShutdownHandler(client))
 
 	// pve_lxc_reboot
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_lxc_reboot",
-		Description: "LXC 컨테이너를 재시작합니다.",
+		Description: "Reboots an LXC container.",
 	}, createLXCRebootHandler(client))
 
-	fmt.Println("LXC Action tools registered: pve_lxc_start, pve_lxc_stop, pve_lxc_shutdown, pve_lxc_reboot")
+	slog.Info("LXC Action tools registered: pve_lxc_start, pve_lxc_stop, pve_lxc_shutdown, pve_lxc_reboot")
 }

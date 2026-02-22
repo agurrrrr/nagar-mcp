@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/luthermonson/go-proxmox"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -12,8 +13,8 @@ import (
 
 // NodeRRDInput contains parameters for node RRD data query
 type NodeRRDInput struct {
-	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
+	Node      string `json:"node" jsonschema:"Proxmox node name"`
+	Timeframe string `json:"timeframe" jsonschema:"Time range (hour, day, week, month, year)"`
 }
 
 // NodeRRDOutput contains RRD data for a node
@@ -41,9 +42,9 @@ type RRDNodeDataPoint struct {
 
 // VMRRDInput contains parameters for VM RRD data query
 type VMRRDInput struct {
-	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node      string `json:"node" jsonschema:"Proxmox node name"`
 	VMID      int    `json:"vmid" jsonschema:"VM ID"`
-	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
+	Timeframe string `json:"timeframe" jsonschema:"Time range (hour, day, week, month, year)"`
 }
 
 // VMRRDOutput contains RRD data for a VM
@@ -70,9 +71,9 @@ type RRDVMDataPoint struct {
 
 // LXCRRDInput contains parameters for LXC RRD data query
 type LXCRRDInput struct {
-	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	VMID      int    `json:"vmid" jsonschema:"LXC 컨테이너 ID"`
-	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
+	Node      string `json:"node" jsonschema:"Proxmox node name"`
+	VMID      int    `json:"vmid" jsonschema:"LXC container ID"`
+	Timeframe string `json:"timeframe" jsonschema:"Time range (hour, day, week, month, year)"`
 }
 
 // LXCRRDOutput contains RRD data for an LXC container
@@ -99,9 +100,9 @@ type RRDLXCDataPoint struct {
 
 // StorageRRDInput contains parameters for storage RRD data query
 type StorageRRDInput struct {
-	Node      string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	Storage   string `json:"storage" jsonschema:"스토리지 이름"`
-	Timeframe string `json:"timeframe" jsonschema:"데이터 기간 (hour, day, week, month, year)"`
+	Node      string `json:"node" jsonschema:"Proxmox node name"`
+	Storage   string `json:"storage" jsonschema:"Storage name"`
+	Timeframe string `json:"timeframe" jsonschema:"Time range (hour, day, week, month, year)"`
 }
 
 // StorageRRDOutput contains RRD data for storage
@@ -166,7 +167,7 @@ func createNodeRRDHandler(client *Client) mcp.ToolHandlerFor[NodeRRDInput, NodeR
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[NodeRRDInput]) (*mcp.CallToolResultFor[NodeRRDOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[NodeRRDOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[NodeRRDOutput]("node parameter is required"), nil
 		}
 
 		timeframe := input.Timeframe
@@ -177,7 +178,7 @@ func createNodeRRDHandler(client *Client) mcp.ToolHandlerFor[NodeRRDInput, NodeR
 		var data []nodeRRDResponse
 		path := fmt.Sprintf("/nodes/%s/rrddata?timeframe=%s", input.Node, timeframe)
 		if err := client.Get(ctx, path, &data); err != nil {
-			return toolErrorfFor[NodeRRDOutput]("노드 RRD 데이터 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[NodeRRDOutput]("failed to query node RRD data: %s", err.Error()), nil
 		}
 
 		output := NodeRRDOutput{
@@ -211,10 +212,10 @@ func createVMRRDHandler(client *Client) mcp.ToolHandlerFor[VMRRDInput, VMRRDOutp
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[VMRRDInput]) (*mcp.CallToolResultFor[VMRRDOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[VMRRDOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[VMRRDOutput]("node parameter is required"), nil
 		}
 		if input.VMID == 0 {
-			return toolErrorFor[VMRRDOutput]("vmid 파라미터가 필요합니다"), nil
+			return toolErrorFor[VMRRDOutput]("vmid parameter is required"), nil
 		}
 
 		timeframe := input.Timeframe
@@ -224,17 +225,17 @@ func createVMRRDHandler(client *Client) mcp.ToolHandlerFor[VMRRDInput, VMRRDOutp
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
-			return toolErrorfFor[VMRRDOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[VMRRDOutput]("failed to query node: %s", err.Error()), nil
 		}
 
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
-			return toolErrorfFor[VMRRDOutput]("VM 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[VMRRDOutput]("failed to query VM: %s", err.Error()), nil
 		}
 
 		rrddata, err := vm.RRDData(ctx, parseTimeframe(timeframe))
 		if err != nil {
-			return toolErrorfFor[VMRRDOutput]("VM RRD 데이터 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[VMRRDOutput]("failed to query VM RRD data: %s", err.Error()), nil
 		}
 
 		output := VMRRDOutput{
@@ -261,10 +262,10 @@ func createLXCRRDHandler(client *Client) mcp.ToolHandlerFor[LXCRRDInput, LXCRRDO
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[LXCRRDInput]) (*mcp.CallToolResultFor[LXCRRDOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[LXCRRDOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[LXCRRDOutput]("node parameter is required"), nil
 		}
 		if input.VMID == 0 {
-			return toolErrorFor[LXCRRDOutput]("vmid 파라미터가 필요합니다"), nil
+			return toolErrorFor[LXCRRDOutput]("vmid parameter is required"), nil
 		}
 
 		timeframe := input.Timeframe
@@ -274,17 +275,17 @@ func createLXCRRDHandler(client *Client) mcp.ToolHandlerFor[LXCRRDInput, LXCRRDO
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
-			return toolErrorfFor[LXCRRDOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[LXCRRDOutput]("failed to query node: %s", err.Error()), nil
 		}
 
 		ct, err := node.Container(ctx, input.VMID)
 		if err != nil {
-			return toolErrorfFor[LXCRRDOutput]("LXC 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[LXCRRDOutput]("failed to query LXC container: %s", err.Error()), nil
 		}
 
 		rrddata, err := ct.RRDData(ctx, parseTimeframe(timeframe), proxmox.AVERAGE)
 		if err != nil {
-			return toolErrorfFor[LXCRRDOutput]("LXC RRD 데이터 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[LXCRRDOutput]("failed to query LXC RRD data: %s", err.Error()), nil
 		}
 
 		output := LXCRRDOutput{
@@ -311,10 +312,10 @@ func createStorageRRDHandler(client *Client) mcp.ToolHandlerFor[StorageRRDInput,
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[StorageRRDInput]) (*mcp.CallToolResultFor[StorageRRDOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[StorageRRDOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[StorageRRDOutput]("node parameter is required"), nil
 		}
 		if input.Storage == "" {
-			return toolErrorFor[StorageRRDOutput]("storage 파라미터가 필요합니다"), nil
+			return toolErrorFor[StorageRRDOutput]("storage parameter is required"), nil
 		}
 
 		timeframe := input.Timeframe
@@ -325,7 +326,7 @@ func createStorageRRDHandler(client *Client) mcp.ToolHandlerFor[StorageRRDInput,
 		var data []storageRRDResponse
 		path := fmt.Sprintf("/nodes/%s/storage/%s/rrddata?timeframe=%s", input.Node, input.Storage, timeframe)
 		if err := client.Get(ctx, path, &data); err != nil {
-			return toolErrorfFor[StorageRRDOutput]("스토리지 RRD 데이터 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[StorageRRDOutput]("failed to query storage RRD data: %s", err.Error()), nil
 		}
 
 		output := StorageRRDOutput{
@@ -352,26 +353,26 @@ func registerMonitoringTools(server *mcp.Server, client *Client) {
 	// pve_node_rrd
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_node_rrd",
-		Description: "노드의 RRD 모니터링 데이터를 조회합니다. CPU, 메모리, 네트워크 사용량의 시계열 데이터를 제공합니다.",
+		Description: "Retrieves RRD monitoring data for a node. Provides time-series data for CPU, memory, and network usage.",
 	}, createNodeRRDHandler(client))
 
 	// pve_vm_rrd
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_rrd",
-		Description: "VM의 RRD 모니터링 데이터를 조회합니다. CPU, 메모리, 디스크 사용량의 시계열 데이터를 제공합니다.",
+		Description: "Retrieves RRD monitoring data for a VM. Provides time-series data for CPU, memory, and disk usage.",
 	}, createVMRRDHandler(client))
 
 	// pve_lxc_rrd
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_lxc_rrd",
-		Description: "LXC 컨테이너의 RRD 모니터링 데이터를 조회합니다. CPU, 메모리, 디스크 사용량의 시계열 데이터를 제공합니다.",
+		Description: "Retrieves RRD monitoring data for an LXC container. Provides time-series data for CPU, memory, and disk usage.",
 	}, createLXCRRDHandler(client))
 
 	// pve_storage_rrd
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_storage_rrd",
-		Description: "스토리지의 RRD 모니터링 데이터를 조회합니다. 사용량의 시계열 데이터를 제공합니다.",
+		Description: "Retrieves RRD monitoring data for storage. Provides time-series usage data.",
 	}, createStorageRRDHandler(client))
 
-	fmt.Println("Monitoring tools registered: pve_node_rrd, pve_vm_rrd, pve_lxc_rrd, pve_storage_rrd")
+	slog.Info("Monitoring tools registered: pve_node_rrd, pve_vm_rrd, pve_lxc_rrd, pve_storage_rrd")
 }

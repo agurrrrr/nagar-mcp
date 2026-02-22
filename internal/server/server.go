@@ -8,10 +8,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"nagar-mcp/internal/config"
-	"nagar-mcp/internal/k8s"
-	"nagar-mcp/internal/opnsense"
-	"nagar-mcp/internal/proxmox"
+	"github.com/agurrrrr/nagar-mcp/internal/config"
+	"github.com/agurrrrr/nagar-mcp/internal/k8s"
+	"github.com/agurrrrr/nagar-mcp/internal/opnsense"
+	"github.com/agurrrrr/nagar-mcp/internal/proxmox"
 )
 
 // Server wraps the MCP server with providers

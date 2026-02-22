@@ -3,7 +3,7 @@ package opnsense
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -19,7 +19,7 @@ type ListFirewallRulesOutput struct {
 }
 
 type GetFirewallRuleInput struct {
-	UUID string `json:"uuid" jsonschema:"방화벽 규칙 UUID"`
+	UUID string `json:"uuid" jsonschema:"Firewall rule UUID"`
 }
 
 type GetFirewallRuleOutput struct {
@@ -27,16 +27,16 @@ type GetFirewallRuleOutput struct {
 }
 
 type AddFirewallRuleInput struct {
-	Enabled     string `json:"enabled,omitempty" jsonschema:"활성화 여부 (1 또는 0, 기본값: 1)"`
-	Action      string `json:"action" jsonschema:"액션 (pass, block, reject)"`
-	Direction   string `json:"direction,omitempty" jsonschema:"방향 (in, out, 기본값: in)"`
-	IPProtocol  string `json:"ipprotocol,omitempty" jsonschema:"IP 프로토콜 (inet, inet6, 기본값: inet)"`
-	Protocol    string `json:"protocol,omitempty" jsonschema:"프로토콜 (TCP, UDP, ICMP 등)"`
-	Interface   string `json:"interface,omitempty" jsonschema:"인터페이스 (lan, wan, opt1 등)"`
-	Source      string `json:"source_net,omitempty" jsonschema:"출발지 (any, IP/CIDR, alias)"`
-	Destination string `json:"destination_net,omitempty" jsonschema:"목적지 (any, IP/CIDR, alias)"`
-	DstPort     string `json:"destination_port,omitempty" jsonschema:"목적지 포트 (예: 80, 443, 8080-8090)"`
-	Description string `json:"description,omitempty" jsonschema:"규칙 설명"`
+	Enabled     string `json:"enabled,omitempty" jsonschema:"Enabled (1 or 0, default: 1)"`
+	Action      string `json:"action" jsonschema:"Action (pass, block, reject)"`
+	Direction   string `json:"direction,omitempty" jsonschema:"Direction (in, out, default: in)"`
+	IPProtocol  string `json:"ipprotocol,omitempty" jsonschema:"IP protocol (inet, inet6, default: inet)"`
+	Protocol    string `json:"protocol,omitempty" jsonschema:"Protocol (TCP, UDP, ICMP, etc.)"`
+	Interface   string `json:"interface,omitempty" jsonschema:"Interface (lan, wan, opt1, etc.)"`
+	Source      string `json:"source_net,omitempty" jsonschema:"Source (any, IP/CIDR, alias)"`
+	Destination string `json:"destination_net,omitempty" jsonschema:"Destination (any, IP/CIDR, alias)"`
+	DstPort     string `json:"destination_port,omitempty" jsonschema:"Destination port (e.g. 80, 443, 8080-8090)"`
+	Description string `json:"description,omitempty" jsonschema:"Rule description"`
 }
 
 type AddFirewallRuleOutput struct {
@@ -45,8 +45,8 @@ type AddFirewallRuleOutput struct {
 }
 
 type ToggleFirewallRuleInput struct {
-	UUID    string `json:"uuid" jsonschema:"방화벽 규칙 UUID"`
-	Enabled string `json:"enabled,omitempty" jsonschema:"활성화 여부 (1 또는 0, 비어있으면 토글)"`
+	UUID    string `json:"uuid" jsonschema:"Firewall rule UUID"`
+	Enabled string `json:"enabled,omitempty" jsonschema:"Enabled (1 or 0, toggles if empty)"`
 }
 
 type ToggleFirewallRuleOutput struct {
@@ -54,7 +54,7 @@ type ToggleFirewallRuleOutput struct {
 }
 
 type DeleteFirewallRuleInput struct {
-	UUID string `json:"uuid" jsonschema:"삭제할 방화벽 규칙 UUID"`
+	UUID string `json:"uuid" jsonschema:"Firewall rule UUID to delete"`
 }
 
 type DeleteFirewallRuleOutput struct {
@@ -67,12 +67,12 @@ func createListFirewallRulesHandler(client *Client) mcp.ToolHandlerFor[ListFirew
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListFirewallRulesInput]) (*mcp.CallToolResultFor[ListFirewallRulesOutput], error) {
 		data, err := client.Get(ctx, "firewall/filter/searchRule")
 		if err != nil {
-			return toolErrorfFor[ListFirewallRulesOutput]("방화벽 규칙 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListFirewallRulesOutput]("failed to query firewall rules: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[ListFirewallRulesOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListFirewallRulesOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ListFirewallRulesOutput{
@@ -87,17 +87,17 @@ func createGetFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[GetFirewall
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[GetFirewallRuleInput]) (*mcp.CallToolResultFor[GetFirewallRuleOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[GetFirewallRuleOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[GetFirewallRuleOutput]("uuid parameter is required"), nil
 		}
 
 		data, err := client.Get(ctx, "firewall/filter/getRule/"+input.UUID)
 		if err != nil {
-			return toolErrorfFor[GetFirewallRuleOutput]("규칙 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[GetFirewallRuleOutput]("failed to query rule: %s", err.Error()), nil
 		}
 
 		var rule map[string]any
 		if err := json.Unmarshal(data, &rule); err != nil {
-			return toolErrorfFor[GetFirewallRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[GetFirewallRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(GetFirewallRuleOutput{Rule: rule}), nil
@@ -108,7 +108,7 @@ func createAddFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[AddFirewall
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[AddFirewallRuleInput]) (*mcp.CallToolResultFor[AddFirewallRuleOutput], error) {
 		input := params.Arguments
 		if input.Action == "" {
-			return toolErrorFor[AddFirewallRuleOutput]("action 파라미터가 필요합니다 (pass, block, reject)"), nil
+			return toolErrorFor[AddFirewallRuleOutput]("action parameter is required (pass, block, reject)"), nil
 		}
 
 		// Set defaults
@@ -139,12 +139,12 @@ func createAddFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[AddFirewall
 
 		data, err := client.Post(ctx, "firewall/filter/addRule", body)
 		if err != nil {
-			return toolErrorfFor[AddFirewallRuleOutput]("규칙 추가 실패: %s", err.Error()), nil
+			return toolErrorfFor[AddFirewallRuleOutput]("failed to add rule: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[AddFirewallRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[AddFirewallRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(AddFirewallRuleOutput{
@@ -158,7 +158,7 @@ func createToggleFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[ToggleFi
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ToggleFirewallRuleInput]) (*mcp.CallToolResultFor[ToggleFirewallRuleOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[ToggleFirewallRuleOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[ToggleFirewallRuleOutput]("uuid parameter is required"), nil
 		}
 
 		path := "firewall/filter/toggleRule/" + input.UUID
@@ -168,12 +168,12 @@ func createToggleFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[ToggleFi
 
 		data, err := client.Post(ctx, path, nil)
 		if err != nil {
-			return toolErrorfFor[ToggleFirewallRuleOutput]("규칙 토글 실패: %s", err.Error()), nil
+			return toolErrorfFor[ToggleFirewallRuleOutput]("failed to toggle rule: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[ToggleFirewallRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[ToggleFirewallRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ToggleFirewallRuleOutput{Result: result.Result}), nil
@@ -184,17 +184,17 @@ func createDeleteFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[DeleteFi
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[DeleteFirewallRuleInput]) (*mcp.CallToolResultFor[DeleteFirewallRuleOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[DeleteFirewallRuleOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[DeleteFirewallRuleOutput]("uuid parameter is required"), nil
 		}
 
 		data, err := client.Post(ctx, "firewall/filter/delRule/"+input.UUID, nil)
 		if err != nil {
-			return toolErrorfFor[DeleteFirewallRuleOutput]("규칙 삭제 실패: %s", err.Error()), nil
+			return toolErrorfFor[DeleteFirewallRuleOutput]("failed to delete rule: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[DeleteFirewallRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[DeleteFirewallRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(DeleteFirewallRuleOutput{Result: result.Result}), nil
@@ -206,28 +206,28 @@ func createDeleteFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[DeleteFi
 func registerFirewallTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_list_firewall_rules",
-		Description: "OPNsense 방화벽 필터 규칙 목록을 조회합니다.",
+		Description: "Lists OPNsense firewall filter rules.",
 	}, createListFirewallRulesHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_get_firewall_rule",
-		Description: "특정 방화벽 규칙의 상세 설정을 조회합니다.",
+		Description: "Retrieves the detailed configuration of a specific firewall rule.",
 	}, createGetFirewallRuleHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_add_firewall_rule",
-		Description: "새 방화벽 필터 규칙을 추가합니다. 추가 후 ops_apply_changes(module=firewall)를 호출해야 적용됩니다.",
+		Description: "Adds a new firewall filter rule. After adding, you must call ops_apply_changes(module=firewall) to apply.",
 	}, createAddFirewallRuleHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_toggle_firewall_rule",
-		Description: "방화벽 규칙을 활성화/비활성화합니다. 변경 후 ops_apply_changes(module=firewall)를 호출해야 적용됩니다.",
+		Description: "Enables/disables a firewall rule. After changing, you must call ops_apply_changes(module=firewall) to apply.",
 	}, createToggleFirewallRuleHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_delete_firewall_rule",
-		Description: "방화벽 규칙을 삭제합니다. 삭제 후 ops_apply_changes(module=firewall)를 호출해야 적용됩니다.",
+		Description: "Deletes a firewall rule. After deleting, you must call ops_apply_changes(module=firewall) to apply.",
 	}, createDeleteFirewallRuleHandler(client))
 
-	fmt.Println("OPNsense firewall tools registered: ops_list_firewall_rules, ops_get_firewall_rule, ops_add_firewall_rule, ops_toggle_firewall_rule, ops_delete_firewall_rule")
+	slog.Info("OPNsense firewall tools registered: ops_list_firewall_rules, ops_get_firewall_rule, ops_add_firewall_rule, ops_toggle_firewall_rule, ops_delete_firewall_rule")
 }

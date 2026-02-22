@@ -1,4 +1,4 @@
-module nagar-mcp
+module github.com/agurrrrr/nagar-mcp
 
 go 1.23.0
 

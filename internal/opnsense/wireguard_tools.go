@@ -3,7 +3,7 @@ package opnsense
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -19,10 +19,10 @@ type WGListInstancesOutput struct {
 }
 
 type WGAddInstanceInput struct {
-	Name       string `json:"name" jsonschema:"인스턴스 이름"`
-	Port       string `json:"port,omitempty" jsonschema:"리스닝 포트 (기본값: 51820)"`
-	TunnelAddr string `json:"tunneladdress,omitempty" jsonschema:"터널 주소 (예: 10.10.10.1/24)"`
-	Enabled    string `json:"enabled,omitempty" jsonschema:"활성화 여부 (1 또는 0, 기본값: 1)"`
+	Name       string `json:"name" jsonschema:"Instance name"`
+	Port       string `json:"port,omitempty" jsonschema:"Listening port (default: 51820)"`
+	TunnelAddr string `json:"tunneladdress,omitempty" jsonschema:"Tunnel address (e.g. 10.10.10.1/24)"`
+	Enabled    string `json:"enabled,omitempty" jsonschema:"Enabled (1 or 0, default: 1)"`
 }
 
 type WGAddInstanceOutput struct {
@@ -39,13 +39,13 @@ type WGListPeersOutput struct {
 }
 
 type WGAddPeerInput struct {
-	Name       string `json:"name" jsonschema:"피어 이름"`
-	PublicKey  string `json:"pubkey" jsonschema:"피어의 WireGuard 공개키"`
-	TunnelAddr string `json:"tunneladdress,omitempty" jsonschema:"피어 터널 주소 (예: 10.10.10.2/32)"`
-	Endpoint   string `json:"endpoint,omitempty" jsonschema:"피어 엔드포인트 (예: peer.example.com:51820)"`
-	AllowedIPs string `json:"allowedips,omitempty" jsonschema:"허용 IP 대역 (예: 10.10.10.2/32)"`
-	KeepAlive  string `json:"keepalive,omitempty" jsonschema:"Keepalive 간격 (초, 기본값: 25)"`
-	Enabled    string `json:"enabled,omitempty" jsonschema:"활성화 여부 (1 또는 0, 기본값: 1)"`
+	Name       string `json:"name" jsonschema:"Peer name"`
+	PublicKey  string `json:"pubkey" jsonschema:"WireGuard public key of the peer"`
+	TunnelAddr string `json:"tunneladdress,omitempty" jsonschema:"Peer tunnel address (e.g. 10.10.10.2/32)"`
+	Endpoint   string `json:"endpoint,omitempty" jsonschema:"Peer endpoint (e.g. peer.example.com:51820)"`
+	AllowedIPs string `json:"allowedips,omitempty" jsonschema:"Allowed IP ranges (e.g. 10.10.10.2/32)"`
+	KeepAlive  string `json:"keepalive,omitempty" jsonschema:"Keepalive interval in seconds (default: 25)"`
+	Enabled    string `json:"enabled,omitempty" jsonschema:"Enabled (1 or 0, default: 1)"`
 }
 
 type WGAddPeerOutput struct {
@@ -54,7 +54,7 @@ type WGAddPeerOutput struct {
 }
 
 type WGDeletePeerInput struct {
-	UUID string `json:"uuid" jsonschema:"삭제할 피어 UUID"`
+	UUID string `json:"uuid" jsonschema:"UUID of the peer to delete"`
 }
 
 type WGDeletePeerOutput struct {
@@ -67,12 +67,12 @@ func createWGListInstancesHandler(client *Client) mcp.ToolHandlerFor[WGListInsta
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[WGListInstancesInput]) (*mcp.CallToolResultFor[WGListInstancesOutput], error) {
 		data, err := client.Get(ctx, "wireguard/server/searchServer")
 		if err != nil {
-			return toolErrorfFor[WGListInstancesOutput]("WireGuard 인스턴스 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGListInstancesOutput]("failed to query WireGuard instances: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[WGListInstancesOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGListInstancesOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(WGListInstancesOutput{
@@ -87,7 +87,7 @@ func createWGAddInstanceHandler(client *Client) mcp.ToolHandlerFor[WGAddInstance
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[WGAddInstanceInput]) (*mcp.CallToolResultFor[WGAddInstanceOutput], error) {
 		input := params.Arguments
 		if input.Name == "" {
-			return toolErrorFor[WGAddInstanceOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[WGAddInstanceOutput]("name parameter is required"), nil
 		}
 
 		if input.Enabled == "" {
@@ -108,12 +108,12 @@ func createWGAddInstanceHandler(client *Client) mcp.ToolHandlerFor[WGAddInstance
 
 		data, err := client.Post(ctx, "wireguard/server/addServer", body)
 		if err != nil {
-			return toolErrorfFor[WGAddInstanceOutput]("WireGuard 인스턴스 생성 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGAddInstanceOutput]("failed to create WireGuard instance: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[WGAddInstanceOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGAddInstanceOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(WGAddInstanceOutput{
@@ -127,12 +127,12 @@ func createWGListPeersHandler(client *Client) mcp.ToolHandlerFor[WGListPeersInpu
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[WGListPeersInput]) (*mcp.CallToolResultFor[WGListPeersOutput], error) {
 		data, err := client.Get(ctx, "wireguard/client/searchClient")
 		if err != nil {
-			return toolErrorfFor[WGListPeersOutput]("WireGuard 피어 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGListPeersOutput]("failed to query WireGuard peers: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[WGListPeersOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGListPeersOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(WGListPeersOutput{
@@ -147,10 +147,10 @@ func createWGAddPeerHandler(client *Client) mcp.ToolHandlerFor[WGAddPeerInput, W
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[WGAddPeerInput]) (*mcp.CallToolResultFor[WGAddPeerOutput], error) {
 		input := params.Arguments
 		if input.Name == "" {
-			return toolErrorFor[WGAddPeerOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[WGAddPeerOutput]("name parameter is required"), nil
 		}
 		if input.PublicKey == "" {
-			return toolErrorFor[WGAddPeerOutput]("pubkey (공개키) 파라미터가 필요합니다"), nil
+			return toolErrorFor[WGAddPeerOutput]("pubkey (public key) parameter is required"), nil
 		}
 
 		if input.Enabled == "" {
@@ -174,12 +174,12 @@ func createWGAddPeerHandler(client *Client) mcp.ToolHandlerFor[WGAddPeerInput, W
 
 		data, err := client.Post(ctx, "wireguard/client/addClient", body)
 		if err != nil {
-			return toolErrorfFor[WGAddPeerOutput]("WireGuard 피어 추가 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGAddPeerOutput]("failed to add WireGuard peer: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[WGAddPeerOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGAddPeerOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(WGAddPeerOutput{
@@ -193,17 +193,17 @@ func createWGDeletePeerHandler(client *Client) mcp.ToolHandlerFor[WGDeletePeerIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[WGDeletePeerInput]) (*mcp.CallToolResultFor[WGDeletePeerOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[WGDeletePeerOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[WGDeletePeerOutput]("uuid parameter is required"), nil
 		}
 
 		data, err := client.Post(ctx, "wireguard/client/delClient/"+input.UUID, nil)
 		if err != nil {
-			return toolErrorfFor[WGDeletePeerOutput]("WireGuard 피어 삭제 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGDeletePeerOutput]("failed to delete WireGuard peer: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[WGDeletePeerOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[WGDeletePeerOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(WGDeletePeerOutput{Result: result.Result}), nil
@@ -215,28 +215,28 @@ func createWGDeletePeerHandler(client *Client) mcp.ToolHandlerFor[WGDeletePeerIn
 func registerWireGuardTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_wg_list_instances",
-		Description: "WireGuard VPN 인스턴스(서버) 목록을 조회합니다.",
+		Description: "Lists WireGuard VPN instances (servers).",
 	}, createWGListInstancesHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_wg_add_instance",
-		Description: "새 WireGuard VPN 인스턴스를 생성합니다. 키페어는 자동 생성됩니다. 생성 후 ops_apply_changes(module=wireguard)를 호출해야 적용됩니다.",
+		Description: "Creates a new WireGuard VPN instance. Key pairs are auto-generated. You must call ops_apply_changes(module=wireguard) after creating to apply.",
 	}, createWGAddInstanceHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_wg_list_peers",
-		Description: "WireGuard VPN 피어(클라이언트) 목록을 조회합니다.",
+		Description: "Lists WireGuard VPN peers (clients).",
 	}, createWGListPeersHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_wg_add_peer",
-		Description: "새 WireGuard VPN 피어를 추가합니다. 추가 후 ops_apply_changes(module=wireguard)를 호출해야 적용됩니다.",
+		Description: "Adds a new WireGuard VPN peer. You must call ops_apply_changes(module=wireguard) after adding to apply.",
 	}, createWGAddPeerHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_wg_delete_peer",
-		Description: "WireGuard VPN 피어를 삭제합니다. 삭제 후 ops_apply_changes(module=wireguard)를 호출해야 적용됩니다.",
+		Description: "Deletes a WireGuard VPN peer. You must call ops_apply_changes(module=wireguard) after deleting to apply.",
 	}, createWGDeletePeerHandler(client))
 
-	fmt.Println("OPNsense WireGuard tools registered: ops_wg_list_instances, ops_wg_add_instance, ops_wg_list_peers, ops_wg_add_peer, ops_wg_delete_peer")
+	slog.Info("OPNsense WireGuard tools registered: ops_wg_list_instances, ops_wg_add_instance, ops_wg_list_peers, ops_wg_add_peer, ops_wg_delete_peer")
 }

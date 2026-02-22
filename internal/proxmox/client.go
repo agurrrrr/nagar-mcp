@@ -7,7 +7,7 @@ import (
 
 	"github.com/luthermonson/go-proxmox"
 
-	"nagar-mcp/internal/config"
+	"github.com/agurrrrr/nagar-mcp/internal/config"
 )
 
 // Client wraps the go-proxmox client with additional functionality

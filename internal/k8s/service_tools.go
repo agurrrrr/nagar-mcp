@@ -2,7 +2,7 @@ package k8s
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,7 +12,7 @@ import (
 
 // ListServicesInput contains optional namespace
 type ListServicesInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"Namespace (all namespaces if empty)"`
 }
 
 // ListServicesOutput contains list of services
@@ -22,8 +22,8 @@ type ListServicesOutput struct {
 
 // ServiceStatusInput contains service identifiers
 type ServiceStatusInput struct {
-	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
-	Name      string `json:"name" jsonschema:"Service 이름"`
+	Namespace string `json:"namespace" jsonschema:"Namespace"`
+	Name      string `json:"name" jsonschema:"Service name"`
 }
 
 // ServiceStatusOutput contains detailed service status
@@ -43,7 +43,7 @@ func createListServicesHandler(client *Client) mcp.ToolHandlerFor[ListServicesIn
 
 		services, err := client.Clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			return toolErrorfFor[ListServicesOutput]("Service 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListServicesOutput]("failed to list Services: %s", err.Error()), nil
 		}
 
 		output := ListServicesOutput{
@@ -81,15 +81,15 @@ func createServiceStatusHandler(client *Client) mcp.ToolHandlerFor[ServiceStatus
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ServiceStatusInput]) (*mcp.CallToolResultFor[ServiceStatusOutput], error) {
 		input := params.Arguments
 		if input.Namespace == "" {
-			return toolErrorFor[ServiceStatusOutput]("namespace 파라미터가 필요합니다"), nil
+			return toolErrorFor[ServiceStatusOutput]("namespace parameter is required"), nil
 		}
 		if input.Name == "" {
-			return toolErrorFor[ServiceStatusOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[ServiceStatusOutput]("name parameter is required"), nil
 		}
 
 		svc, err := client.Clientset.CoreV1().Services(input.Namespace).Get(ctx, input.Name, metav1.GetOptions{})
 		if err != nil {
-			return toolErrorfFor[ServiceStatusOutput]("Service 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ServiceStatusOutput]("failed to get Service: %s", err.Error()), nil
 		}
 
 		ports := make([]ServicePort, 0, len(svc.Spec.Ports))
@@ -122,13 +122,13 @@ func createServiceStatusHandler(client *Client) mcp.ToolHandlerFor[ServiceStatus
 func registerServiceTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_list_services",
-		Description: "Service 목록을 조회합니다.",
+		Description: "Lists Services.",
 	}, createListServicesHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_service_status",
-		Description: "특정 Service의 상세 정보를 조회합니다.",
+		Description: "Retrieves detailed information about a specific Service.",
 	}, createServiceStatusHandler(client))
 
-	fmt.Println("Kubernetes service tools registered: k8s_list_services, k8s_service_status")
+	slog.Info("Kubernetes service tools registered: k8s_list_services, k8s_service_status")
 }

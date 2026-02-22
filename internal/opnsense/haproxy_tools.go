@@ -3,7 +3,7 @@ package opnsense
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -19,12 +19,12 @@ type HAListServersOutput struct {
 }
 
 type HAAddServerInput struct {
-	Name    string `json:"name" jsonschema:"서버 이름"`
-	Address string `json:"address" jsonschema:"서버 주소 (IP 또는 호스트명)"`
-	Port    string `json:"port" jsonschema:"서버 포트"`
-	Mode    string `json:"mode,omitempty" jsonschema:"모드 (active, backup, disabled, 기본값: active)"`
-	SSL     string `json:"ssl,omitempty" jsonschema:"SSL 사용 여부 (1 또는 0, 기본값: 0)"`
-	Weight  string `json:"weight,omitempty" jsonschema:"가중치 (기본값: 1)"`
+	Name    string `json:"name" jsonschema:"Server name"`
+	Address string `json:"address" jsonschema:"Server address (IP or hostname)"`
+	Port    string `json:"port" jsonschema:"Server port"`
+	Mode    string `json:"mode,omitempty" jsonschema:"Mode (active, backup, disabled, default: active)"`
+	SSL     string `json:"ssl,omitempty" jsonschema:"SSL enabled (1 or 0, default: 0)"`
+	Weight  string `json:"weight,omitempty" jsonschema:"Weight (default: 1)"`
 }
 
 type HAAddServerOutput struct {
@@ -41,10 +41,10 @@ type HAListBackendsOutput struct {
 }
 
 type HAAddBackendInput struct {
-	Name    string `json:"name" jsonschema:"백엔드 이름"`
-	Mode    string `json:"mode,omitempty" jsonschema:"프로토콜 모드 (http, tcp, 기본값: http)"`
-	Balance string `json:"balance,omitempty" jsonschema:"로드밸런싱 알고리즘 (roundrobin, leastconn, source, 기본값: roundrobin)"`
-	Servers string `json:"linkedServers,omitempty" jsonschema:"연결할 서버 UUID (쉼표로 구분)"`
+	Name    string `json:"name" jsonschema:"Backend name"`
+	Mode    string `json:"mode,omitempty" jsonschema:"Protocol mode (http, tcp, default: http)"`
+	Balance string `json:"balance,omitempty" jsonschema:"Load balancing algorithm (roundrobin, leastconn, source, default: roundrobin)"`
+	Servers string `json:"linkedServers,omitempty" jsonschema:"Server UUIDs to link (comma-separated)"`
 }
 
 type HAAddBackendOutput struct {
@@ -78,12 +78,12 @@ func createHAListServersHandler(client *Client) mcp.ToolHandlerFor[HAListServers
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[HAListServersInput]) (*mcp.CallToolResultFor[HAListServersOutput], error) {
 		data, err := client.Get(ctx, "haproxy/settings/searchServers")
 		if err != nil {
-			return toolErrorfFor[HAListServersOutput]("HAProxy 서버 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAListServersOutput]("failed to list HAProxy servers: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[HAListServersOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAListServersOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(HAListServersOutput{
@@ -98,13 +98,13 @@ func createHAAddServerHandler(client *Client) mcp.ToolHandlerFor[HAAddServerInpu
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[HAAddServerInput]) (*mcp.CallToolResultFor[HAAddServerOutput], error) {
 		input := params.Arguments
 		if input.Name == "" {
-			return toolErrorFor[HAAddServerOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[HAAddServerOutput]("name parameter is required"), nil
 		}
 		if input.Address == "" {
-			return toolErrorFor[HAAddServerOutput]("address 파라미터가 필요합니다"), nil
+			return toolErrorFor[HAAddServerOutput]("address parameter is required"), nil
 		}
 		if input.Port == "" {
-			return toolErrorFor[HAAddServerOutput]("port 파라미터가 필요합니다"), nil
+			return toolErrorFor[HAAddServerOutput]("port parameter is required"), nil
 		}
 
 		if input.Mode == "" {
@@ -130,12 +130,12 @@ func createHAAddServerHandler(client *Client) mcp.ToolHandlerFor[HAAddServerInpu
 
 		data, err := client.Post(ctx, "haproxy/settings/addServer", body)
 		if err != nil {
-			return toolErrorfFor[HAAddServerOutput]("HAProxy 서버 추가 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAAddServerOutput]("failed to add HAProxy server: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[HAAddServerOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAAddServerOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(HAAddServerOutput{
@@ -149,12 +149,12 @@ func createHAListBackendsHandler(client *Client) mcp.ToolHandlerFor[HAListBacken
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[HAListBackendsInput]) (*mcp.CallToolResultFor[HAListBackendsOutput], error) {
 		data, err := client.Get(ctx, "haproxy/settings/searchBackends")
 		if err != nil {
-			return toolErrorfFor[HAListBackendsOutput]("HAProxy 백엔드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAListBackendsOutput]("failed to query HAProxy backends: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[HAListBackendsOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAListBackendsOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(HAListBackendsOutput{
@@ -169,7 +169,7 @@ func createHAAddBackendHandler(client *Client) mcp.ToolHandlerFor[HAAddBackendIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[HAAddBackendInput]) (*mcp.CallToolResultFor[HAAddBackendOutput], error) {
 		input := params.Arguments
 		if input.Name == "" {
-			return toolErrorFor[HAAddBackendOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[HAAddBackendOutput]("name parameter is required"), nil
 		}
 
 		if input.Mode == "" {
@@ -191,12 +191,12 @@ func createHAAddBackendHandler(client *Client) mcp.ToolHandlerFor[HAAddBackendIn
 
 		data, err := client.Post(ctx, "haproxy/settings/addBackend", body)
 		if err != nil {
-			return toolErrorfFor[HAAddBackendOutput]("HAProxy 백엔드 생성 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAAddBackendOutput]("failed to create HAProxy backend: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[HAAddBackendOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAAddBackendOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(HAAddBackendOutput{
@@ -210,12 +210,12 @@ func createHAListFrontendsHandler(client *Client) mcp.ToolHandlerFor[HAListFront
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[HAListFrontendsInput]) (*mcp.CallToolResultFor[HAListFrontendsOutput], error) {
 		data, err := client.Get(ctx, "haproxy/settings/searchFrontends")
 		if err != nil {
-			return toolErrorfFor[HAListFrontendsOutput]("HAProxy 프론트엔드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAListFrontendsOutput]("failed to query HAProxy frontends: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[HAListFrontendsOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAListFrontendsOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(HAListFrontendsOutput{
@@ -230,12 +230,12 @@ func createHAStatisticsHandler(client *Client) mcp.ToolHandlerFor[HAStatisticsIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[HAStatisticsInput]) (*mcp.CallToolResultFor[HAStatisticsOutput], error) {
 		data, err := client.Get(ctx, "haproxy/statistics/counters")
 		if err != nil {
-			return toolErrorfFor[HAStatisticsOutput]("HAProxy 통계 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAStatisticsOutput]("failed to query HAProxy statistics: %s", err.Error()), nil
 		}
 
 		var stats map[string]any
 		if err := json.Unmarshal(data, &stats); err != nil {
-			return toolErrorfFor[HAStatisticsOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAStatisticsOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(HAStatisticsOutput{Stats: stats}), nil
@@ -246,12 +246,12 @@ func createHAConfigTestHandler(client *Client) mcp.ToolHandlerFor[HAConfigTestIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[HAConfigTestInput]) (*mcp.CallToolResultFor[HAConfigTestOutput], error) {
 		data, err := client.Get(ctx, "haproxy/service/configtest")
 		if err != nil {
-			return toolErrorfFor[HAConfigTestOutput]("HAProxy 설정 검증 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAConfigTestOutput]("failed to validate HAProxy configuration: %s", err.Error()), nil
 		}
 
 		var result map[string]any
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[HAConfigTestOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[HAConfigTestOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(HAConfigTestOutput{Result: result}), nil
@@ -263,38 +263,38 @@ func createHAConfigTestHandler(client *Client) mcp.ToolHandlerFor[HAConfigTestIn
 func registerHAProxyTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_ha_list_servers",
-		Description: "HAProxy 백엔드 서버 목록을 조회합니다.",
+		Description: "Lists HAProxy backend servers.",
 	}, createHAListServersHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_ha_add_server",
-		Description: "HAProxy 백엔드 서버를 추가합니다. 추가 후 ops_ha_config_test로 검증하고 ops_apply_changes(module=haproxy)를 호출해야 적용됩니다.",
+		Description: "Adds an HAProxy backend server. After adding, validate with ops_ha_config_test and call ops_apply_changes(module=haproxy) to apply.",
 	}, createHAAddServerHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_ha_list_backends",
-		Description: "HAProxy 백엔드 풀 목록을 조회합니다.",
+		Description: "Lists HAProxy backend pools.",
 	}, createHAListBackendsHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_ha_add_backend",
-		Description: "HAProxy 백엔드 풀을 생성합니다. 서버를 연결하고 로드밸런싱 알고리즘을 설정합니다.",
+		Description: "Creates an HAProxy backend pool. Links servers and configures the load balancing algorithm.",
 	}, createHAAddBackendHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_ha_list_frontends",
-		Description: "HAProxy 프론트엔드(리스너) 목록을 조회합니다.",
+		Description: "Lists HAProxy frontends (listeners).",
 	}, createHAListFrontendsHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_ha_statistics",
-		Description: "HAProxy 성능 통계를 조회합니다. 연결 수, 바이트, 응답 시간 등의 카운터를 제공합니다.",
+		Description: "Retrieves HAProxy performance statistics. Provides counters for connections, bytes, response times, etc.",
 	}, createHAStatisticsHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_ha_config_test",
-		Description: "HAProxy 설정의 유효성을 검증합니다. 변경사항 적용 전에 반드시 호출하세요.",
+		Description: "Validates HAProxy configuration. Must be called before applying changes.",
 	}, createHAConfigTestHandler(client))
 
-	fmt.Println("OPNsense HAProxy tools registered: ops_ha_list_servers, ops_ha_add_server, ops_ha_list_backends, ops_ha_add_backend, ops_ha_list_frontends, ops_ha_statistics, ops_ha_config_test")
+	slog.Info("OPNsense HAProxy tools registered: ops_ha_list_servers, ops_ha_add_server, ops_ha_list_backends, ops_ha_add_backend, ops_ha_list_frontends, ops_ha_statistics, ops_ha_config_test")
 }

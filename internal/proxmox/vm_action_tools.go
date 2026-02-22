@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -11,7 +12,7 @@ import (
 
 // VMStartInput contains parameters for starting a VM
 type VMStartInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
@@ -23,9 +24,9 @@ type VMStartOutput struct {
 
 // VMStopInput contains parameters for stopping a VM
 type VMStopInput struct {
-	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node    string `json:"node" jsonschema:"Proxmox node name"`
 	VMID    int    `json:"vmid" jsonschema:"VM ID"`
-	Confirm bool   `json:"confirm" jsonschema:"true로 설정해야 실제 정지 실행 (데이터 손실 위험)"`
+	Confirm bool   `json:"confirm" jsonschema:"Must be set to true to execute the stop (risk of data loss)"`
 }
 
 // VMStopOutput contains the result of stopping a VM
@@ -36,9 +37,9 @@ type VMStopOutput struct {
 
 // VMShutdownInput contains parameters for gracefully shutting down a VM
 type VMShutdownInput struct {
-	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node    string `json:"node" jsonschema:"Proxmox node name"`
 	VMID    int    `json:"vmid" jsonschema:"VM ID"`
-	Timeout int    `json:"timeout,omitempty" jsonschema:"종료 대기 시간 (초)"`
+	Timeout int    `json:"timeout,omitempty" jsonschema:"Shutdown timeout in seconds"`
 }
 
 // VMShutdownOutput contains the result of shutting down a VM
@@ -49,7 +50,7 @@ type VMShutdownOutput struct {
 
 // VMRebootInput contains parameters for rebooting a VM
 type VMRebootInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
@@ -61,7 +62,7 @@ type VMRebootOutput struct {
 
 // VMSnapshotListInput contains parameters for listing VM snapshots
 type VMSnapshotListInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
@@ -72,10 +73,10 @@ type VMSnapshotListOutput struct {
 
 // VMSnapshotCreateInput contains parameters for creating a VM snapshot
 type VMSnapshotCreateInput struct {
-	Node        string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node        string `json:"node" jsonschema:"Proxmox node name"`
 	VMID        int    `json:"vmid" jsonschema:"VM ID"`
-	Name        string `json:"name" jsonschema:"스냅샷 이름"`
-	Description string `json:"description,omitempty" jsonschema:"스냅샷 설명"`
+	Name        string `json:"name" jsonschema:"Snapshot name"`
+	Description string `json:"description,omitempty" jsonschema:"Snapshot description"`
 }
 
 // VMSnapshotCreateOutput contains the result of creating a VM snapshot
@@ -91,13 +92,13 @@ func createVMStartHandler(client *Client) mcp.ToolHandlerFor[VMStartInput, VMSta
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[VMStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[VMStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -105,7 +106,7 @@ func createVMStartHandler(client *Client) mcp.ToolHandlerFor[VMStartInput, VMSta
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -113,7 +114,7 @@ func createVMStartHandler(client *Client) mcp.ToolHandlerFor[VMStartInput, VMSta
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -121,7 +122,7 @@ func createVMStartHandler(client *Client) mcp.ToolHandlerFor[VMStartInput, VMSta
 		task, err := vm.Start(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMStartOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 시작 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to start VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -129,7 +130,7 @@ func createVMStartHandler(client *Client) mcp.ToolHandlerFor[VMStartInput, VMSta
 		return &mcp.CallToolResultFor[VMStartOutput]{
 			StructuredContent: VMStartOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("VM %d 시작 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("VM %d start requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -140,26 +141,26 @@ func createVMStopHandler(client *Client) mcp.ToolHandlerFor[VMStopInput, VMStopO
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[VMStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[VMStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if !input.Confirm {
 			return &mcp.CallToolResultFor[VMStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "⚠️ VM 강제 정지는 데이터 손실을 유발할 수 있습니다. confirm: true를 설정해주세요. 정상 종료를 원하면 pve_vm_shutdown을 사용하세요."}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "WARNING: Force stopping a VM may cause data loss. Please set confirm: true. For a graceful shutdown, use pve_vm_shutdown instead."}},
 			}, nil
 		}
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -167,7 +168,7 @@ func createVMStopHandler(client *Client) mcp.ToolHandlerFor[VMStopInput, VMStopO
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -175,7 +176,7 @@ func createVMStopHandler(client *Client) mcp.ToolHandlerFor[VMStopInput, VMStopO
 		task, err := vm.Stop(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMStopOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 정지 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to stop VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -183,7 +184,7 @@ func createVMStopHandler(client *Client) mcp.ToolHandlerFor[VMStopInput, VMStopO
 		return &mcp.CallToolResultFor[VMStopOutput]{
 			StructuredContent: VMStopOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("VM %d 정지 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("VM %d stop requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -194,13 +195,13 @@ func createVMShutdownHandler(client *Client) mcp.ToolHandlerFor[VMShutdownInput,
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[VMShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[VMShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -208,7 +209,7 @@ func createVMShutdownHandler(client *Client) mcp.ToolHandlerFor[VMShutdownInput,
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -216,7 +217,7 @@ func createVMShutdownHandler(client *Client) mcp.ToolHandlerFor[VMShutdownInput,
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -224,7 +225,7 @@ func createVMShutdownHandler(client *Client) mcp.ToolHandlerFor[VMShutdownInput,
 		task, err := vm.Shutdown(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMShutdownOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 종료 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to shutdown VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -232,7 +233,7 @@ func createVMShutdownHandler(client *Client) mcp.ToolHandlerFor[VMShutdownInput,
 		return &mcp.CallToolResultFor[VMShutdownOutput]{
 			StructuredContent: VMShutdownOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("VM %d 정상 종료 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("VM %d graceful shutdown requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -243,13 +244,13 @@ func createVMRebootHandler(client *Client) mcp.ToolHandlerFor[VMRebootInput, VMR
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[VMRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[VMRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -257,7 +258,7 @@ func createVMRebootHandler(client *Client) mcp.ToolHandlerFor[VMRebootInput, VMR
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -265,7 +266,7 @@ func createVMRebootHandler(client *Client) mcp.ToolHandlerFor[VMRebootInput, VMR
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -273,7 +274,7 @@ func createVMRebootHandler(client *Client) mcp.ToolHandlerFor[VMRebootInput, VMR
 		task, err := vm.Reboot(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMRebootOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 재시작 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to reboot VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -281,7 +282,7 @@ func createVMRebootHandler(client *Client) mcp.ToolHandlerFor[VMRebootInput, VMR
 		return &mcp.CallToolResultFor[VMRebootOutput]{
 			StructuredContent: VMRebootOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("VM %d 재시작 요청됨 (UPID: %s)", input.VMID, string(task.UPID)),
+				Message: fmt.Sprintf("VM %d reboot requested (UPID: %s)", input.VMID, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -292,13 +293,13 @@ func createVMSnapshotListHandler(client *Client) mcp.ToolHandlerFor[VMSnapshotLi
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[VMSnapshotListOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[VMSnapshotListOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -306,7 +307,7 @@ func createVMSnapshotListHandler(client *Client) mcp.ToolHandlerFor[VMSnapshotLi
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMSnapshotListOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -314,7 +315,7 @@ func createVMSnapshotListHandler(client *Client) mcp.ToolHandlerFor[VMSnapshotLi
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMSnapshotListOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -322,7 +323,7 @@ func createVMSnapshotListHandler(client *Client) mcp.ToolHandlerFor[VMSnapshotLi
 		snapshots, err := vm.Snapshots(ctx)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMSnapshotListOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("스냅샷 목록 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to list snapshots: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -351,19 +352,19 @@ func createVMSnapshotCreateHandler(client *Client) mcp.ToolHandlerFor[VMSnapshot
 		input := params.Arguments
 		if input.Node == "" {
 			return &mcp.CallToolResultFor[VMSnapshotCreateOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "node 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "node parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.VMID == 0 {
 			return &mcp.CallToolResultFor[VMSnapshotCreateOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "vmid 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "vmid parameter is required"}},
 				IsError: true,
 			}, nil
 		}
 		if input.Name == "" {
 			return &mcp.CallToolResultFor[VMSnapshotCreateOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: "name 파라미터가 필요합니다"}},
+				Content: []mcp.Content{&mcp.TextContent{Text: "name parameter is required"}},
 				IsError: true,
 			}, nil
 		}
@@ -371,7 +372,7 @@ func createVMSnapshotCreateHandler(client *Client) mcp.ToolHandlerFor[VMSnapshot
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMSnapshotCreateOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("노드 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query node: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -379,7 +380,7 @@ func createVMSnapshotCreateHandler(client *Client) mcp.ToolHandlerFor[VMSnapshot
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMSnapshotCreateOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("VM 조회 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to query VM: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -387,7 +388,7 @@ func createVMSnapshotCreateHandler(client *Client) mcp.ToolHandlerFor[VMSnapshot
 		task, err := vm.NewSnapshot(ctx, input.Name)
 		if err != nil {
 			return &mcp.CallToolResultFor[VMSnapshotCreateOutput]{
-				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("스냅샷 생성 실패: %s", err.Error())}},
+				Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("failed to create snapshot: %s", err.Error())}},
 				IsError: true,
 			}, nil
 		}
@@ -395,7 +396,7 @@ func createVMSnapshotCreateHandler(client *Client) mcp.ToolHandlerFor[VMSnapshot
 		return &mcp.CallToolResultFor[VMSnapshotCreateOutput]{
 			StructuredContent: VMSnapshotCreateOutput{
 				UPID:    string(task.UPID),
-				Message: fmt.Sprintf("VM %d 스냅샷 '%s' 생성 요청됨 (UPID: %s)", input.VMID, input.Name, string(task.UPID)),
+				Message: fmt.Sprintf("VM %d snapshot '%s' creation requested (UPID: %s)", input.VMID, input.Name, string(task.UPID)),
 			},
 		}, nil
 	}
@@ -407,38 +408,38 @@ func registerVMActionTools(server *mcp.Server, client *Client) {
 	// pve_vm_start
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_start",
-		Description: "VM을 시작합니다. 비동기 작업으로 UPID가 반환됩니다.",
+		Description: "Starts a VM. Returns a UPID for the asynchronous task.",
 	}, createVMStartHandler(client))
 
 	// pve_vm_stop
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_stop",
-		Description: "VM을 강제 정지합니다. 데이터 손실 위험이 있으므로 confirm: true가 필요합니다. 정상 종료는 pve_vm_shutdown을 사용하세요.",
+		Description: "Force stops a VM. Requires confirm: true due to risk of data loss. For graceful shutdown, use pve_vm_shutdown.",
 	}, createVMStopHandler(client))
 
 	// pve_vm_shutdown
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_shutdown",
-		Description: "VM을 정상 종료(ACPI shutdown)합니다. Guest Agent가 설치되어 있으면 더 안정적입니다.",
+		Description: "Gracefully shuts down a VM (ACPI shutdown). More reliable when Guest Agent is installed.",
 	}, createVMShutdownHandler(client))
 
 	// pve_vm_reboot
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_reboot",
-		Description: "VM을 재시작합니다.",
+		Description: "Reboots a VM.",
 	}, createVMRebootHandler(client))
 
 	// pve_vm_snapshot_list
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_snapshot_list",
-		Description: "VM의 스냅샷 목록을 조회합니다.",
+		Description: "Lists snapshots of a VM.",
 	}, createVMSnapshotListHandler(client))
 
 	// pve_vm_snapshot_create
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_snapshot_create",
-		Description: "VM의 스냅샷을 생성합니다.",
+		Description: "Creates a snapshot of a VM.",
 	}, createVMSnapshotCreateHandler(client))
 
-	fmt.Println("VM Action tools registered: pve_vm_start, pve_vm_stop, pve_vm_shutdown, pve_vm_reboot, pve_vm_snapshot_list, pve_vm_snapshot_create")
+	slog.Info("VM Action tools registered: pve_vm_start, pve_vm_stop, pve_vm_shutdown, pve_vm_reboot, pve_vm_snapshot_list, pve_vm_snapshot_create")
 }

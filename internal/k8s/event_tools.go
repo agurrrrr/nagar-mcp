@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,8 +13,8 @@ import (
 
 // ListEventsInput contains optional namespace and limit
 type ListEventsInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
-	Limit     int64  `json:"limit,omitempty" jsonschema:"최대 이벤트 수 (기본 50)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"Namespace (all namespaces if empty)"`
+	Limit     int64  `json:"limit,omitempty" jsonschema:"Maximum number of events (default 50)"`
 }
 
 // ListEventsOutput contains list of events
@@ -40,7 +41,7 @@ func createListEventsHandler(client *Client) mcp.ToolHandlerFor[ListEventsInput,
 			Limit: limit,
 		})
 		if err != nil {
-			return toolErrorfFor[ListEventsOutput]("Event 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListEventsOutput]("failed to list Events: %s", err.Error()), nil
 		}
 
 		output := ListEventsOutput{
@@ -72,8 +73,8 @@ func createListEventsHandler(client *Client) mcp.ToolHandlerFor[ListEventsInput,
 func registerEventTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_list_events",
-		Description: "Kubernetes 이벤트 목록을 조회합니다.",
+		Description: "Lists Kubernetes events.",
 	}, createListEventsHandler(client))
 
-	fmt.Println("Kubernetes event tools registered: k8s_list_events")
+	slog.Info("Kubernetes event tools registered: k8s_list_events")
 }

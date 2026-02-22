@@ -2,7 +2,7 @@ package k8s
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,7 +12,7 @@ import (
 
 // ListDeploymentsInput contains optional namespace
 type ListDeploymentsInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"Namespace (all namespaces if empty)"`
 }
 
 // ListDeploymentsOutput contains list of deployments
@@ -22,8 +22,8 @@ type ListDeploymentsOutput struct {
 
 // DeploymentStatusInput contains deployment identifiers
 type DeploymentStatusInput struct {
-	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
-	Name      string `json:"name" jsonschema:"Deployment 이름"`
+	Namespace string `json:"namespace" jsonschema:"Namespace"`
+	Name      string `json:"name" jsonschema:"Deployment name"`
 }
 
 // DeploymentStatusOutput contains detailed deployment status
@@ -43,7 +43,7 @@ func createListDeploymentsHandler(client *Client) mcp.ToolHandlerFor[ListDeploym
 
 		deployments, err := client.Clientset.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			return toolErrorfFor[ListDeploymentsOutput]("Deployment 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListDeploymentsOutput]("failed to list Deployments: %s", err.Error()), nil
 		}
 
 		output := ListDeploymentsOutput{
@@ -77,15 +77,15 @@ func createDeploymentStatusHandler(client *Client) mcp.ToolHandlerFor[Deployment
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[DeploymentStatusInput]) (*mcp.CallToolResultFor[DeploymentStatusOutput], error) {
 		input := params.Arguments
 		if input.Namespace == "" {
-			return toolErrorFor[DeploymentStatusOutput]("namespace 파라미터가 필요합니다"), nil
+			return toolErrorFor[DeploymentStatusOutput]("namespace parameter is required"), nil
 		}
 		if input.Name == "" {
-			return toolErrorFor[DeploymentStatusOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[DeploymentStatusOutput]("name parameter is required"), nil
 		}
 
 		deploy, err := client.Clientset.AppsV1().Deployments(input.Namespace).Get(ctx, input.Name, metav1.GetOptions{})
 		if err != nil {
-			return toolErrorfFor[DeploymentStatusOutput]("Deployment 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[DeploymentStatusOutput]("failed to get Deployment: %s", err.Error()), nil
 		}
 
 		strategy := string(deploy.Spec.Strategy.Type)
@@ -115,13 +115,13 @@ func createDeploymentStatusHandler(client *Client) mcp.ToolHandlerFor[Deployment
 func registerDeploymentTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_list_deployments",
-		Description: "Deployment 목록을 조회합니다.",
+		Description: "Lists Deployments.",
 	}, createListDeploymentsHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_deployment_status",
-		Description: "특정 Deployment의 상세 상태를 조회합니다.",
+		Description: "Retrieves the detailed status of a specific Deployment.",
 	}, createDeploymentStatusHandler(client))
 
-	fmt.Println("Kubernetes deployment tools registered: k8s_list_deployments, k8s_deployment_status")
+	slog.Info("Kubernetes deployment tools registered: k8s_list_deployments, k8s_deployment_status")
 }

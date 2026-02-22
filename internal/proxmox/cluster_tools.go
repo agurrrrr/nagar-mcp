@@ -2,7 +2,7 @@ package proxmox
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -11,7 +11,7 @@ import (
 
 // ClusterResourcesInput contains optional type filter
 type ClusterResourcesInput struct {
-	Type string `json:"type,omitempty" jsonschema:"리소스 타입 필터 (vm|storage|node),enum=vm,enum=storage,enum=node"`
+	Type string `json:"type,omitempty" jsonschema:"Resource type filter (vm|storage|node),enum=vm,enum=storage,enum=node"`
 }
 
 // ClusterResourcesOutput contains cluster resources
@@ -41,7 +41,7 @@ type NodeStatus struct {
 
 // ListStorageInput contains node name
 type ListStorageInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // ListStorageOutput contains storage list
@@ -51,8 +51,8 @@ type ListStorageOutput struct {
 
 // StorageContentInput contains node and storage name
 type StorageContentInput struct {
-	Node    string `json:"node" jsonschema:"Proxmox 노드 이름"`
-	Storage string `json:"storage" jsonschema:"스토리지 이름"`
+	Node    string `json:"node" jsonschema:"Proxmox node name"`
+	Storage string `json:"storage" jsonschema:"Storage name"`
 }
 
 // StorageContentOutput contains storage content
@@ -77,12 +77,12 @@ func createClusterResourcesHandler(client *Client) mcp.ToolHandlerFor[ClusterRes
 
 		cluster, err := client.Cluster(ctx)
 		if err != nil {
-			return toolErrorfFor[ClusterResourcesOutput]("클러스터 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ClusterResourcesOutput]("failed to query cluster: %s", err.Error()), nil
 		}
 
 		resources, err := cluster.Resources(ctx, input.Type)
 		if err != nil {
-			return toolErrorfFor[ClusterResourcesOutput]("리소스 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ClusterResourcesOutput]("failed to list resources: %s", err.Error()), nil
 		}
 
 		output := ClusterResourcesOutput{
@@ -115,13 +115,13 @@ func createClusterStatusHandler(client *Client) mcp.ToolHandlerFor[ClusterStatus
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ClusterStatusInput]) (*mcp.CallToolResultFor[ClusterStatusOutput], error) {
 		cluster, err := client.Cluster(ctx)
 		if err != nil {
-			return toolErrorfFor[ClusterStatusOutput]("클러스터 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ClusterStatusOutput]("failed to query cluster: %s", err.Error()), nil
 		}
 
 		// Status() populates the cluster's fields including Nodes
 		err = cluster.Status(ctx)
 		if err != nil {
-			return toolErrorfFor[ClusterStatusOutput]("클러스터 상태 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ClusterStatusOutput]("failed to query cluster status: %s", err.Error()), nil
 		}
 
 		output := ClusterStatusOutput{
@@ -150,17 +150,17 @@ func createListStorageHandler(client *Client) mcp.ToolHandlerFor[ListStorageInpu
 		input := params.Arguments
 
 		if input.Node == "" {
-			return toolErrorFor[ListStorageOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[ListStorageOutput]("node parameter is required"), nil
 		}
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
-			return toolErrorfFor[ListStorageOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListStorageOutput]("failed to query node: %s", err.Error()), nil
 		}
 
 		storages, err := node.Storages(ctx)
 		if err != nil {
-			return toolErrorfFor[ListStorageOutput]("스토리지 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListStorageOutput]("failed to list storage: %s", err.Error()), nil
 		}
 
 		output := ListStorageOutput{
@@ -196,25 +196,25 @@ func createStorageContentHandler(client *Client) mcp.ToolHandlerFor[StorageConte
 		input := params.Arguments
 
 		if input.Node == "" {
-			return toolErrorFor[StorageContentOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[StorageContentOutput]("node parameter is required"), nil
 		}
 		if input.Storage == "" {
-			return toolErrorFor[StorageContentOutput]("storage 파라미터가 필요합니다"), nil
+			return toolErrorFor[StorageContentOutput]("storage parameter is required"), nil
 		}
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
-			return toolErrorfFor[StorageContentOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[StorageContentOutput]("failed to query node: %s", err.Error()), nil
 		}
 
 		storage, err := node.Storage(ctx, input.Storage)
 		if err != nil {
-			return toolErrorfFor[StorageContentOutput]("스토리지 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[StorageContentOutput]("failed to query storage: %s", err.Error()), nil
 		}
 
 		content, err := storage.GetContent(ctx)
 		if err != nil {
-			return toolErrorfFor[StorageContentOutput]("스토리지 콘텐츠 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[StorageContentOutput]("failed to query storage content: %s", err.Error()), nil
 		}
 
 		output := StorageContentOutput{
@@ -241,26 +241,26 @@ func registerClusterTools(server *mcp.Server, client *Client) {
 	// pve_cluster_resources
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_cluster_resources",
-		Description: "Proxmox 클러스터의 전체 리소스(VM, LXC, 스토리지, 노드)를 통합 조회합니다. type 파라미터로 필터링할 수 있습니다.",
+		Description: "Lists all resources (VMs, LXC, storage, nodes) in the Proxmox cluster. Can be filtered by the type parameter.",
 	}, createClusterResourcesHandler(client))
 
 	// pve_cluster_status
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_cluster_status",
-		Description: "Proxmox 클러스터의 상태를 조회합니다. 클러스터 이름, 쿼럼 상태, 노드 목록 및 각 노드의 온라인 상태를 제공합니다.",
+		Description: "Retrieves Proxmox cluster status. Provides cluster name, quorum status, node list, and online status of each node.",
 	}, createClusterStatusHandler(client))
 
 	// pve_list_storage
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_list_storage",
-		Description: "특정 노드의 스토리지 목록을 조회합니다. 각 스토리지의 타입, 용량, 사용량 정보를 포함합니다.",
+		Description: "Lists storage on a specific node. Includes type, capacity, and usage information for each storage.",
 	}, createListStorageHandler(client))
 
 	// pve_storage_content
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_storage_content",
-		Description: "특정 스토리지의 콘텐츠(ISO, 템플릿, 디스크 이미지 등)를 조회합니다.",
+		Description: "Lists content of a specific storage (ISOs, templates, disk images, etc.).",
 	}, createStorageContentHandler(client))
 
-	fmt.Println("Cluster/Storage tools registered: pve_cluster_resources, pve_cluster_status, pve_list_storage, pve_storage_content")
+	slog.Info("Cluster/Storage tools registered: pve_cluster_resources, pve_cluster_status, pve_list_storage, pve_storage_content")
 }

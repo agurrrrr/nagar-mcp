@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -11,7 +12,7 @@ import (
 
 // CephStatusInput contains the node name
 type CephStatusInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // CephStatusOutput contains Ceph cluster status
@@ -63,7 +64,7 @@ type CephMonMapOutput struct {
 
 // ListCephOSDInput contains the node name
 type ListCephOSDInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // ListCephOSDOutput contains list of OSDs
@@ -89,7 +90,7 @@ type CephOSDDetail struct {
 
 // ListCephPoolInput contains the node name
 type ListCephPoolInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // ListCephPoolOutput contains list of Ceph pools
@@ -111,7 +112,7 @@ type CephPoolDetail struct {
 
 // ListCephMonInput contains the node name
 type ListCephMonInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // ListCephMonOutput contains list of Ceph monitors
@@ -129,7 +130,7 @@ type CephMonDetail struct {
 
 // ListCephMDSInput contains the node name
 type ListCephMDSInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // ListCephMDSOutput contains list of MDS daemons
@@ -147,7 +148,7 @@ type CephMDSDetail struct {
 
 // ListCephFSInput contains the node name
 type ListCephFSInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // ListCephFSOutput contains list of CephFS filesystems
@@ -248,13 +249,13 @@ func createCephStatusHandler(client *Client) mcp.ToolHandlerFor[CephStatusInput,
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[CephStatusInput]) (*mcp.CallToolResultFor[CephStatusOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[CephStatusOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[CephStatusOutput]("node parameter is required"), nil
 		}
 
 		var resp cephStatusResponse
 		path := fmt.Sprintf("/nodes/%s/ceph/status", input.Node)
 		if err := client.Get(ctx, path, &resp); err != nil {
-			return toolErrorfFor[CephStatusOutput]("Ceph 상태 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[CephStatusOutput]("failed to query Ceph status: %s", err.Error()), nil
 		}
 
 		output := CephStatusOutput{
@@ -297,13 +298,13 @@ func createListCephOSDHandler(client *Client) mcp.ToolHandlerFor[ListCephOSDInpu
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListCephOSDInput]) (*mcp.CallToolResultFor[ListCephOSDOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[ListCephOSDOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[ListCephOSDOutput]("node parameter is required"), nil
 		}
 
 		var osds []cephOSDResponse
 		path := fmt.Sprintf("/nodes/%s/ceph/osd", input.Node)
 		if err := client.Get(ctx, path, &osds); err != nil {
-			return toolErrorfFor[ListCephOSDOutput]("Ceph OSD 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListCephOSDOutput]("failed to query Ceph OSDs: %s", err.Error()), nil
 		}
 
 		output := ListCephOSDOutput{
@@ -335,13 +336,13 @@ func createListCephPoolHandler(client *Client) mcp.ToolHandlerFor[ListCephPoolIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListCephPoolInput]) (*mcp.CallToolResultFor[ListCephPoolOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[ListCephPoolOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[ListCephPoolOutput]("node parameter is required"), nil
 		}
 
 		var pools []cephPoolResponse
 		path := fmt.Sprintf("/nodes/%s/ceph/pool", input.Node)
 		if err := client.Get(ctx, path, &pools); err != nil {
-			return toolErrorfFor[ListCephPoolOutput]("Ceph Pool 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListCephPoolOutput]("failed to query Ceph pools: %s", err.Error()), nil
 		}
 
 		output := ListCephPoolOutput{
@@ -369,13 +370,13 @@ func createListCephMonHandler(client *Client) mcp.ToolHandlerFor[ListCephMonInpu
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListCephMonInput]) (*mcp.CallToolResultFor[ListCephMonOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[ListCephMonOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[ListCephMonOutput]("node parameter is required"), nil
 		}
 
 		var mons []cephMonResponse
 		path := fmt.Sprintf("/nodes/%s/ceph/mon", input.Node)
 		if err := client.Get(ctx, path, &mons); err != nil {
-			return toolErrorfFor[ListCephMonOutput]("Ceph Monitor 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListCephMonOutput]("failed to query Ceph monitors: %s", err.Error()), nil
 		}
 
 		output := ListCephMonOutput{
@@ -399,13 +400,13 @@ func createListCephMDSHandler(client *Client) mcp.ToolHandlerFor[ListCephMDSInpu
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListCephMDSInput]) (*mcp.CallToolResultFor[ListCephMDSOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[ListCephMDSOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[ListCephMDSOutput]("node parameter is required"), nil
 		}
 
 		var mdsList []cephMDSResponse
 		path := fmt.Sprintf("/nodes/%s/ceph/mds", input.Node)
 		if err := client.Get(ctx, path, &mdsList); err != nil {
-			return toolErrorfFor[ListCephMDSOutput]("Ceph MDS 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListCephMDSOutput]("failed to query Ceph MDS: %s", err.Error()), nil
 		}
 
 		output := ListCephMDSOutput{
@@ -429,13 +430,13 @@ func createListCephFSHandler(client *Client) mcp.ToolHandlerFor[ListCephFSInput,
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListCephFSInput]) (*mcp.CallToolResultFor[ListCephFSOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[ListCephFSOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[ListCephFSOutput]("node parameter is required"), nil
 		}
 
 		var fsList []cephFSResponse
 		path := fmt.Sprintf("/nodes/%s/ceph/fs", input.Node)
 		if err := client.Get(ctx, path, &fsList); err != nil {
-			return toolErrorfFor[ListCephFSOutput]("CephFS 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListCephFSOutput]("failed to query CephFS: %s", err.Error()), nil
 		}
 
 		output := ListCephFSOutput{
@@ -460,38 +461,38 @@ func registerCephTools(server *mcp.Server, client *Client) {
 	// pve_ceph_status
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_ceph_status",
-		Description: "Ceph 클러스터의 전체 상태를 조회합니다. 건강 상태, PG, OSD, Monitor 정보를 포함합니다.",
+		Description: "Retrieves overall Ceph cluster status. Includes health, PG, OSD, and monitor information.",
 	}, createCephStatusHandler(client))
 
 	// pve_list_ceph_osd
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_list_ceph_osd",
-		Description: "Ceph OSD 목록과 상태를 조회합니다. 각 OSD의 용량, 사용률, 상태 정보를 포함합니다.",
+		Description: "Lists Ceph OSDs and their status. Includes capacity, utilization, and status for each OSD.",
 	}, createListCephOSDHandler(client))
 
 	// pve_list_ceph_pool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_list_ceph_pool",
-		Description: "Ceph Pool 목록을 조회합니다. 각 풀의 크기, PG 수, 사용량 정보를 포함합니다.",
+		Description: "Lists Ceph pools. Includes size, PG count, and usage information for each pool.",
 	}, createListCephPoolHandler(client))
 
 	// pve_list_ceph_mon
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_list_ceph_mon",
-		Description: "Ceph Monitor 목록을 조회합니다. 각 모니터의 주소와 쿼럼 상태를 포함합니다.",
+		Description: "Lists Ceph monitors. Includes address and quorum status for each monitor.",
 	}, createListCephMonHandler(client))
 
 	// pve_list_ceph_mds
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_list_ceph_mds",
-		Description: "Ceph MDS (Metadata Server) 목록을 조회합니다. CephFS를 위한 MDS 상태를 확인합니다.",
+		Description: "Lists Ceph MDS (Metadata Server) daemons. View MDS status for CephFS.",
 	}, createListCephMDSHandler(client))
 
 	// pve_list_ceph_fs
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_list_ceph_fs",
-		Description: "CephFS 파일시스템 목록을 조회합니다.",
+		Description: "Lists CephFS filesystems.",
 	}, createListCephFSHandler(client))
 
-	fmt.Println("Ceph tools registered: pve_ceph_status, pve_list_ceph_osd, pve_list_ceph_pool, pve_list_ceph_mon, pve_list_ceph_mds, pve_list_ceph_fs")
+	slog.Info("Ceph tools registered: pve_ceph_status, pve_list_ceph_osd, pve_list_ceph_pool, pve_list_ceph_mon, pve_list_ceph_mds, pve_list_ceph_fs")
 }

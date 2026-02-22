@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"nagar-mcp/internal/config"
+	"github.com/agurrrrr/nagar-mcp/internal/config"
 )
 
 // Client is an OPNsense REST API client

@@ -1,0 +1,28 @@
+# Proxmox VE (optional - leave empty to disable Proxmox features)
+# Environment variable overrides: PVE_URL, PVE_TOKEN_ID, PVE_SECRET, PVE_INSECURE_TLS
+proxmox:
+  url: "https://your-proxmox-host:8006/api2/json"
+  token_id: "user@pam!token-name"
+  secret: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  insecure_tls: false                    # Allow self-signed certificates
+
+# Kubernetes (optional - leave empty to use in-cluster mode)
+# Environment variable overrides: KUBECONFIG, KUBE_CONTEXT
+kubernetes:
+  kubeconfig: "~/.kube/config"           # Path to kubeconfig (leave empty for in-cluster mode)
+  context: ""                            # Context to use (leave empty for current-context)
+
+# OPNsense (optional - leave empty to disable OPNsense features)
+# Environment variable overrides: OPS_URL, OPS_API_KEY, OPS_API_SECRET, OPS_INSECURE_TLS
+opnsense:
+  url: "https://your-opnsense-host"
+  api_key: "your-api-key"
+  api_secret: "your-api-secret"
+  insecure_tls: false                    # Allow self-signed certificates
+
+# MCP server settings
+server:
+  transport: "stdio"                     # "stdio" | "http"
+  http_addr: ":9090"                     # Bind address for http mode
+  name: "nagar-mcp"
+  version: "0.1.0"

@@ -2,7 +2,7 @@ package proxmox
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/luthermonson/go-proxmox"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -12,7 +12,7 @@ import (
 
 // TaskStatusInput contains upid
 type TaskStatusInput struct {
-	UPID string `json:"upid" jsonschema:"태스크 UPID"`
+	UPID string `json:"upid" jsonschema:"Task UPID"`
 }
 
 // TaskStatusOutput contains task status
@@ -30,9 +30,9 @@ type TaskStatusOutput struct {
 
 // TaskLogInput contains upid
 type TaskLogInput struct {
-	UPID  string `json:"upid" jsonschema:"태스크 UPID"`
-	Start int    `json:"start,omitempty" jsonschema:"시작 라인 (기본 0)"`
-	Limit int    `json:"limit,omitempty" jsonschema:"최대 라인 수 (기본 50)"`
+	UPID  string `json:"upid" jsonschema:"Task UPID"`
+	Start int    `json:"start,omitempty" jsonschema:"Start line (default 0)"`
+	Limit int    `json:"limit,omitempty" jsonschema:"Maximum number of lines (default 50)"`
 }
 
 // TaskLogOutput contains task log
@@ -55,7 +55,7 @@ func createTaskStatusHandler(client *Client) mcp.ToolHandlerFor[TaskStatusInput,
 		input := params.Arguments
 
 		if input.UPID == "" {
-			return toolErrorFor[TaskStatusOutput]("upid 파라미터가 필요합니다"), nil
+			return toolErrorFor[TaskStatusOutput]("upid parameter is required"), nil
 		}
 
 		// Create task from UPID
@@ -64,7 +64,7 @@ func createTaskStatusHandler(client *Client) mcp.ToolHandlerFor[TaskStatusInput,
 		// Ping the task to update its status
 		err := task.Ping(ctx)
 		if err != nil {
-			return toolErrorfFor[TaskStatusOutput]("태스크 상태 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[TaskStatusOutput]("failed to query task status: %s", err.Error()), nil
 		}
 
 		output := TaskStatusOutput{
@@ -88,7 +88,7 @@ func createTaskLogHandler(client *Client) mcp.ToolHandlerFor[TaskLogInput, TaskL
 		input := params.Arguments
 
 		if input.UPID == "" {
-			return toolErrorFor[TaskLogOutput]("upid 파라미터가 필요합니다"), nil
+			return toolErrorFor[TaskLogOutput]("upid parameter is required"), nil
 		}
 
 		// Create task from UPID
@@ -103,7 +103,7 @@ func createTaskLogHandler(client *Client) mcp.ToolHandlerFor[TaskLogInput, TaskL
 
 		logs, err := task.Log(ctx, start, limit)
 		if err != nil {
-			return toolErrorfFor[TaskLogOutput]("태스크 로그 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[TaskLogOutput]("failed to query task log: %s", err.Error()), nil
 		}
 
 		output := TaskLogOutput{
@@ -129,14 +129,14 @@ func registerTaskTools(server *mcp.Server, client *Client) {
 	// pve_task_status
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_task_status",
-		Description: "Proxmox 비동기 태스크의 상태를 조회합니다. VM 시작/정지 등의 작업은 비동기로 실행되며, UPID를 통해 상태를 확인할 수 있습니다.",
+		Description: "Retrieves the status of a Proxmox async task. Operations like VM start/stop run asynchronously, and their status can be checked via UPID.",
 	}, createTaskStatusHandler(client))
 
 	// pve_task_log
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_task_log",
-		Description: "Proxmox 태스크의 로그를 조회합니다. 태스크 실행 중 발생한 메시지와 결과를 확인할 수 있습니다.",
+		Description: "Retrieves logs of a Proxmox task. View messages and results generated during task execution.",
 	}, createTaskLogHandler(client))
 
-	fmt.Println("Task tools registered: pve_task_status, pve_task_log")
+	slog.Info("Task tools registered: pve_task_status, pve_task_log")
 }

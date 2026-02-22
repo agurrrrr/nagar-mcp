@@ -1,0 +1,23 @@
+# Binary
+nagar-mcp
+nagar-mcp.exe
+
+# Configuration (contains credentials)
+config.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+
+# Design docs (internal)
+proxmox-k8s-mcp-design-*.md

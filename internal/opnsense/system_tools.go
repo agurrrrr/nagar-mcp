@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -31,12 +32,12 @@ func createFirmwareStatusHandler(client *Client) mcp.ToolHandlerFor[FirmwareStat
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[FirmwareStatusInput]) (*mcp.CallToolResultFor[FirmwareStatusOutput], error) {
 		data, err := client.Get(ctx, "core/firmware/status")
 		if err != nil {
-			return toolErrorfFor[FirmwareStatusOutput]("펌웨어 상태 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[FirmwareStatusOutput]("failed to query firmware status: %s", err.Error()), nil
 		}
 
 		var raw map[string]any
 		if err := json.Unmarshal(data, &raw); err != nil {
-			return toolErrorfFor[FirmwareStatusOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[FirmwareStatusOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		output := FirmwareStatusOutput{
@@ -62,12 +63,12 @@ func createSystemStatusHandler(client *Client) mcp.ToolHandlerFor[SystemStatusIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[SystemStatusInput]) (*mcp.CallToolResultFor[SystemStatusOutput], error) {
 		data, err := client.Get(ctx, "core/firmware/info")
 		if err != nil {
-			return toolErrorfFor[SystemStatusOutput]("시스템 정보 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[SystemStatusOutput]("failed to query system info: %s", err.Error()), nil
 		}
 
 		var info map[string]any
 		if err := json.Unmarshal(data, &info); err != nil {
-			return toolErrorfFor[SystemStatusOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[SystemStatusOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(SystemStatusOutput{Info: info}), nil
@@ -79,13 +80,13 @@ func createSystemStatusHandler(client *Client) mcp.ToolHandlerFor[SystemStatusIn
 func registerSystemTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_firmware_status",
-		Description: "OPNsense 펌웨어 및 업데이트 상태를 조회합니다.",
+		Description: "Queries OPNsense firmware and update status.",
 	}, createFirmwareStatusHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_system_status",
-		Description: "OPNsense 시스템 정보를 조회합니다. 버전, 아키텍처 등의 정보를 제공합니다.",
+		Description: "Queries OPNsense system information. Provides version, architecture, and other details.",
 	}, createSystemStatusHandler(client))
 
-	fmt.Println("OPNsense system tools registered: ops_firmware_status, ops_system_status")
+	slog.Info("OPNsense system tools registered: ops_firmware_status, ops_system_status")
 }

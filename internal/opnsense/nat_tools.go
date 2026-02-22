@@ -3,7 +3,7 @@ package opnsense
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -19,7 +19,7 @@ type ListNATRulesOutput struct {
 }
 
 type GetNATRuleInput struct {
-	UUID string `json:"uuid" jsonschema:"NAT 규칙 UUID"`
+	UUID string `json:"uuid" jsonschema:"NAT rule UUID"`
 }
 
 type GetNATRuleOutput struct {
@@ -27,17 +27,17 @@ type GetNATRuleOutput struct {
 }
 
 type AddNATRuleInput struct {
-	Enabled     string `json:"enabled,omitempty" jsonschema:"활성화 여부 (1 또는 0, 기본값: 1)"`
-	Interface   string `json:"interface,omitempty" jsonschema:"인터페이스 (wan, lan 등, 기본값: wan)"`
-	IPProtocol  string `json:"ipprotocol,omitempty" jsonschema:"IP 프로토콜 (inet, inet6, 기본값: inet)"`
-	Protocol    string `json:"protocol" jsonschema:"프로토콜 (TCP, UDP, TCP/UDP 등)"`
-	Source      string `json:"source,omitempty" jsonschema:"출발지 (any, IP/CIDR)"`
-	SourcePort  string `json:"source_port,omitempty" jsonschema:"출발지 포트"`
-	Destination string `json:"destination,omitempty" jsonschema:"목적지 (any, WAN address 등)"`
-	DstPort     string `json:"destination_port" jsonschema:"목적지 포트 (외부 포트, 예: 8080, 30000-30100)"`
-	TargetIP    string `json:"target" jsonschema:"리다이렉트 대상 IP (내부 호스트)"`
-	TargetPort  string `json:"target_port,omitempty" jsonschema:"리다이렉트 대상 포트 (비어있으면 목적지 포트와 동일)"`
-	Description string `json:"description,omitempty" jsonschema:"규칙 설명"`
+	Enabled     string `json:"enabled,omitempty" jsonschema:"Enabled (1 or 0, default: 1)"`
+	Interface   string `json:"interface,omitempty" jsonschema:"Interface (wan, lan, etc., default: wan)"`
+	IPProtocol  string `json:"ipprotocol,omitempty" jsonschema:"IP protocol (inet, inet6, default: inet)"`
+	Protocol    string `json:"protocol" jsonschema:"Protocol (TCP, UDP, TCP/UDP, etc.)"`
+	Source      string `json:"source,omitempty" jsonschema:"Source (any, IP/CIDR)"`
+	SourcePort  string `json:"source_port,omitempty" jsonschema:"Source port"`
+	Destination string `json:"destination,omitempty" jsonschema:"Destination (any, WAN address, etc.)"`
+	DstPort     string `json:"destination_port" jsonschema:"Destination port (external port, e.g. 8080, 30000-30100)"`
+	TargetIP    string `json:"target" jsonschema:"Redirect target IP (internal host)"`
+	TargetPort  string `json:"target_port,omitempty" jsonschema:"Redirect target port (same as destination port if empty)"`
+	Description string `json:"description,omitempty" jsonschema:"Rule description"`
 }
 
 type AddNATRuleOutput struct {
@@ -46,18 +46,18 @@ type AddNATRuleOutput struct {
 }
 
 type UpdateNATRuleInput struct {
-	UUID        string `json:"uuid" jsonschema:"수정할 NAT 규칙 UUID"`
-	Enabled     string `json:"enabled,omitempty" jsonschema:"활성화 여부 (1 또는 0)"`
-	Interface   string `json:"interface,omitempty" jsonschema:"인터페이스"`
-	IPProtocol  string `json:"ipprotocol,omitempty" jsonschema:"IP 프로토콜"`
-	Protocol    string `json:"protocol,omitempty" jsonschema:"프로토콜"`
-	Source      string `json:"source,omitempty" jsonschema:"출발지"`
-	SourcePort  string `json:"source_port,omitempty" jsonschema:"출발지 포트"`
-	Destination string `json:"destination,omitempty" jsonschema:"목적지"`
-	DstPort     string `json:"destination_port,omitempty" jsonschema:"목적지 포트"`
-	TargetIP    string `json:"target,omitempty" jsonschema:"리다이렉트 대상 IP"`
-	TargetPort  string `json:"target_port,omitempty" jsonschema:"리다이렉트 대상 포트"`
-	Description string `json:"description,omitempty" jsonschema:"규칙 설명"`
+	UUID        string `json:"uuid" jsonschema:"NAT rule UUID to update"`
+	Enabled     string `json:"enabled,omitempty" jsonschema:"Enabled (1 or 0)"`
+	Interface   string `json:"interface,omitempty" jsonschema:"Interface"`
+	IPProtocol  string `json:"ipprotocol,omitempty" jsonschema:"IP protocol"`
+	Protocol    string `json:"protocol,omitempty" jsonschema:"Protocol"`
+	Source      string `json:"source,omitempty" jsonschema:"Source"`
+	SourcePort  string `json:"source_port,omitempty" jsonschema:"Source port"`
+	Destination string `json:"destination,omitempty" jsonschema:"Destination"`
+	DstPort     string `json:"destination_port,omitempty" jsonschema:"Destination port"`
+	TargetIP    string `json:"target,omitempty" jsonschema:"Redirect target IP"`
+	TargetPort  string `json:"target_port,omitempty" jsonschema:"Redirect target port"`
+	Description string `json:"description,omitempty" jsonschema:"Rule description"`
 }
 
 type UpdateNATRuleOutput struct {
@@ -65,7 +65,7 @@ type UpdateNATRuleOutput struct {
 }
 
 type DeleteNATRuleInput struct {
-	UUID string `json:"uuid" jsonschema:"삭제할 NAT 규칙 UUID"`
+	UUID string `json:"uuid" jsonschema:"NAT rule UUID to delete"`
 }
 
 type DeleteNATRuleOutput struct {
@@ -73,8 +73,8 @@ type DeleteNATRuleOutput struct {
 }
 
 type ToggleNATRuleInput struct {
-	UUID     string `json:"uuid" jsonschema:"NAT 규칙 UUID"`
-	Disabled string `json:"disabled,omitempty" jsonschema:"비활성화 여부 (1 또는 0, 비어있으면 토글)"`
+	UUID     string `json:"uuid" jsonschema:"NAT rule UUID"`
+	Disabled string `json:"disabled,omitempty" jsonschema:"Disabled (1 or 0, toggles if empty)"`
 }
 
 type ToggleNATRuleOutput struct {
@@ -87,12 +87,12 @@ func createListNATRulesHandler(client *Client) mcp.ToolHandlerFor[ListNATRulesIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListNATRulesInput]) (*mcp.CallToolResultFor[ListNATRulesOutput], error) {
 		data, err := client.Get(ctx, "firewall/d_nat/search_rule")
 		if err != nil {
-			return toolErrorfFor[ListNATRulesOutput]("NAT 규칙 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListNATRulesOutput]("failed to query NAT rules: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[ListNATRulesOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListNATRulesOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ListNATRulesOutput{
@@ -107,17 +107,17 @@ func createGetNATRuleHandler(client *Client) mcp.ToolHandlerFor[GetNATRuleInput,
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[GetNATRuleInput]) (*mcp.CallToolResultFor[GetNATRuleOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[GetNATRuleOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[GetNATRuleOutput]("uuid parameter is required"), nil
 		}
 
 		data, err := client.Get(ctx, "firewall/d_nat/get_rule/"+input.UUID)
 		if err != nil {
-			return toolErrorfFor[GetNATRuleOutput]("NAT 규칙 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[GetNATRuleOutput]("failed to query NAT rule: %s", err.Error()), nil
 		}
 
 		var rule map[string]any
 		if err := json.Unmarshal(data, &rule); err != nil {
-			return toolErrorfFor[GetNATRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[GetNATRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(GetNATRuleOutput{Rule: rule}), nil
@@ -128,13 +128,13 @@ func createAddNATRuleHandler(client *Client) mcp.ToolHandlerFor[AddNATRuleInput,
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[AddNATRuleInput]) (*mcp.CallToolResultFor[AddNATRuleOutput], error) {
 		input := params.Arguments
 		if input.Protocol == "" {
-			return toolErrorFor[AddNATRuleOutput]("protocol 파라미터가 필요합니다 (TCP, UDP, TCP/UDP)"), nil
+			return toolErrorFor[AddNATRuleOutput]("protocol parameter is required (TCP, UDP, TCP/UDP)"), nil
 		}
 		if input.DstPort == "" {
-			return toolErrorFor[AddNATRuleOutput]("destination_port (외부 포트) 파라미터가 필요합니다"), nil
+			return toolErrorFor[AddNATRuleOutput]("destination_port (external port) parameter is required"), nil
 		}
 		if input.TargetIP == "" {
-			return toolErrorFor[AddNATRuleOutput]("target (리다이렉트 대상 IP) 파라미터가 필요합니다"), nil
+			return toolErrorFor[AddNATRuleOutput]("target (redirect target IP) parameter is required"), nil
 		}
 
 		if input.Enabled == "" {
@@ -165,12 +165,12 @@ func createAddNATRuleHandler(client *Client) mcp.ToolHandlerFor[AddNATRuleInput,
 
 		data, err := client.Post(ctx, "firewall/d_nat/add_rule", body)
 		if err != nil {
-			return toolErrorfFor[AddNATRuleOutput]("NAT 규칙 추가 실패: %s", err.Error()), nil
+			return toolErrorfFor[AddNATRuleOutput]("failed to add NAT rule: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[AddNATRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[AddNATRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(AddNATRuleOutput{
@@ -184,7 +184,7 @@ func createUpdateNATRuleHandler(client *Client) mcp.ToolHandlerFor[UpdateNATRule
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[UpdateNATRuleInput]) (*mcp.CallToolResultFor[UpdateNATRuleOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[UpdateNATRuleOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[UpdateNATRuleOutput]("uuid parameter is required"), nil
 		}
 
 		rule := make(map[string]any)
@@ -226,12 +226,12 @@ func createUpdateNATRuleHandler(client *Client) mcp.ToolHandlerFor[UpdateNATRule
 
 		data, err := client.Post(ctx, "firewall/d_nat/set_rule/"+input.UUID, body)
 		if err != nil {
-			return toolErrorfFor[UpdateNATRuleOutput]("NAT 규칙 수정 실패: %s", err.Error()), nil
+			return toolErrorfFor[UpdateNATRuleOutput]("failed to update NAT rule: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[UpdateNATRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[UpdateNATRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(UpdateNATRuleOutput{Result: result.Result}), nil
@@ -242,17 +242,17 @@ func createDeleteNATRuleHandler(client *Client) mcp.ToolHandlerFor[DeleteNATRule
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[DeleteNATRuleInput]) (*mcp.CallToolResultFor[DeleteNATRuleOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[DeleteNATRuleOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[DeleteNATRuleOutput]("uuid parameter is required"), nil
 		}
 
 		data, err := client.Post(ctx, "firewall/d_nat/del_rule/"+input.UUID, nil)
 		if err != nil {
-			return toolErrorfFor[DeleteNATRuleOutput]("NAT 규칙 삭제 실패: %s", err.Error()), nil
+			return toolErrorfFor[DeleteNATRuleOutput]("failed to delete NAT rule: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[DeleteNATRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[DeleteNATRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(DeleteNATRuleOutput{Result: result.Result}), nil
@@ -263,7 +263,7 @@ func createToggleNATRuleHandler(client *Client) mcp.ToolHandlerFor[ToggleNATRule
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ToggleNATRuleInput]) (*mcp.CallToolResultFor[ToggleNATRuleOutput], error) {
 		input := params.Arguments
 		if input.UUID == "" {
-			return toolErrorFor[ToggleNATRuleOutput]("uuid 파라미터가 필요합니다"), nil
+			return toolErrorFor[ToggleNATRuleOutput]("uuid parameter is required"), nil
 		}
 
 		path := "firewall/d_nat/toggle_rule/" + input.UUID
@@ -273,12 +273,12 @@ func createToggleNATRuleHandler(client *Client) mcp.ToolHandlerFor[ToggleNATRule
 
 		data, err := client.Post(ctx, path, nil)
 		if err != nil {
-			return toolErrorfFor[ToggleNATRuleOutput]("NAT 규칙 토글 실패: %s", err.Error()), nil
+			return toolErrorfFor[ToggleNATRuleOutput]("failed to toggle NAT rule: %s", err.Error()), nil
 		}
 
 		var result UUIDResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[ToggleNATRuleOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[ToggleNATRuleOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ToggleNATRuleOutput{Result: result.Result}), nil
@@ -298,33 +298,33 @@ func boolInvert(enabled string) string {
 func registerNATTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_list_nat_rules",
-		Description: "OPNsense NAT 포트포워딩(DNAT) 규칙 목록을 조회합니다.",
+		Description: "Lists OPNsense NAT port forwarding (DNAT) rules.",
 	}, createListNATRulesHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_get_nat_rule",
-		Description: "특정 NAT 포트포워딩 규칙의 상세 설정을 조회합니다.",
+		Description: "Retrieves detailed configuration of a specific NAT port forwarding rule.",
 	}, createGetNATRuleHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_add_nat_rule",
-		Description: "NAT 포트포워딩 규칙을 추가합니다. 외부 포트를 내부 IP:포트로 리다이렉트합니다. 추가 후 ops_apply_changes(module=firewall)를 호출해야 적용됩니다.",
+		Description: "Adds a NAT port forwarding rule. Redirects external ports to internal IP:port. You must call ops_apply_changes(module=firewall) after adding to apply.",
 	}, createAddNATRuleHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_update_nat_rule",
-		Description: "기존 NAT 포트포워딩 규칙을 수정합니다. target IP/포트 변경 등에 사용합니다. 수정 후 ops_apply_changes(module=firewall)를 호출해야 적용됩니다.",
+		Description: "Updates an existing NAT port forwarding rule. Used for changing target IP/port, etc. You must call ops_apply_changes(module=firewall) after updating to apply.",
 	}, createUpdateNATRuleHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_delete_nat_rule",
-		Description: "NAT 포트포워딩 규칙을 삭제합니다. 삭제 후 ops_apply_changes(module=firewall)를 호출해야 적용됩니다.",
+		Description: "Deletes a NAT port forwarding rule. You must call ops_apply_changes(module=firewall) after deleting to apply.",
 	}, createDeleteNATRuleHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_toggle_nat_rule",
-		Description: "NAT 포트포워딩 규칙을 활성화/비활성화합니다. 변경 후 ops_apply_changes(module=firewall)를 호출해야 적용됩니다.",
+		Description: "Enables or disables a NAT port forwarding rule. You must call ops_apply_changes(module=firewall) after changing to apply.",
 	}, createToggleNATRuleHandler(client))
 
-	fmt.Println("OPNsense NAT tools registered: ops_list_nat_rules, ops_get_nat_rule, ops_add_nat_rule, ops_update_nat_rule, ops_delete_nat_rule, ops_toggle_nat_rule")
+	slog.Info("OPNsense NAT tools registered: ops_list_nat_rules, ops_get_nat_rule, ops_add_nat_rule, ops_update_nat_rule, ops_delete_nat_rule, ops_toggle_nat_rule")
 }

@@ -2,7 +2,7 @@ package k8s
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -30,7 +30,7 @@ type ListNodesOutput struct {
 
 // NodeStatusInput contains the node name
 type NodeStatusInput struct {
-	Node string `json:"node" mcp:"description:Kubernetes 노드 이름"`
+	Node string `json:"node" mcp:"description:Kubernetes node name"`
 }
 
 // NodeStatusOutput contains detailed node status
@@ -44,7 +44,7 @@ func createListNamespacesHandler(client *Client) mcp.ToolHandlerFor[ListNamespac
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListNamespacesInput]) (*mcp.CallToolResultFor[ListNamespacesOutput], error) {
 		namespaces, err := client.Clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 		if err != nil {
-			return toolErrorfFor[ListNamespacesOutput]("네임스페이스 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListNamespacesOutput]("failed to list namespaces: %s", err.Error()), nil
 		}
 
 		output := ListNamespacesOutput{
@@ -68,7 +68,7 @@ func createListNodesHandler(client *Client) mcp.ToolHandlerFor[ListNodesInput, L
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListNodesInput]) (*mcp.CallToolResultFor[ListNodesOutput], error) {
 		nodes, err := client.Clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 		if err != nil {
-			return toolErrorfFor[ListNodesOutput]("노드 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListNodesOutput]("failed to list nodes: %s", err.Error()), nil
 		}
 
 		output := ListNodesOutput{
@@ -88,12 +88,12 @@ func createNodeStatusHandler(client *Client) mcp.ToolHandlerFor[NodeStatusInput,
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[NodeStatusInput]) (*mcp.CallToolResultFor[NodeStatusOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[NodeStatusOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[NodeStatusOutput]("node parameter is required"), nil
 		}
 
 		node, err := client.Clientset.CoreV1().Nodes().Get(ctx, input.Node, metav1.GetOptions{})
 		if err != nil {
-			return toolErrorfFor[NodeStatusOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[NodeStatusOutput]("failed to get node: %s", err.Error()), nil
 		}
 
 		info := convertNodeToInfo(node)
@@ -165,18 +165,18 @@ func convertNodeToInfo(node *corev1.Node) NodeInfo {
 func registerNamespaceTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_list_namespaces",
-		Description: "Kubernetes 클러스터의 모든 네임스페이스 목록을 조회합니다.",
+		Description: "Lists all namespaces in the Kubernetes cluster.",
 	}, createListNamespacesHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_list_nodes",
-		Description: "Kubernetes 클러스터의 모든 노드 목록을 조회합니다.",
+		Description: "Lists all nodes in the Kubernetes cluster.",
 	}, createListNodesHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_node_status",
-		Description: "특정 Kubernetes 노드의 상세 상태를 조회합니다.",
+		Description: "Retrieves the detailed status of a specific Kubernetes node.",
 	}, createNodeStatusHandler(client))
 
-	fmt.Println("Kubernetes namespace/node tools registered: k8s_list_namespaces, k8s_list_nodes, k8s_node_status")
+	slog.Info("Kubernetes namespace/node tools registered: k8s_list_namespaces, k8s_list_nodes, k8s_node_status")
 }

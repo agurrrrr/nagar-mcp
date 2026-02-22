@@ -3,7 +3,7 @@ package opnsense
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -19,8 +19,8 @@ type ListServicesOutput struct {
 }
 
 type ServiceActionInput struct {
-	Service string `json:"service" jsonschema:"서비스 이름 (예: unbound, wireguard, haproxy)"`
-	Action  string `json:"action" jsonschema:"액션 (start, stop, restart, status)"`
+	Service string `json:"service" jsonschema:"Service name (e.g. unbound, wireguard, haproxy)"`
+	Action  string `json:"action" jsonschema:"Action (start, stop, restart, status)"`
 }
 
 type ServiceActionOutput struct {
@@ -28,7 +28,7 @@ type ServiceActionOutput struct {
 }
 
 type ApplyChangesInput struct {
-	Module string `json:"module" jsonschema:"모듈 이름 (예: firewall, unbound, wireguard, haproxy)"`
+	Module string `json:"module" jsonschema:"Module name (e.g. firewall, unbound, wireguard, haproxy)"`
 }
 
 type ApplyChangesOutput struct {
@@ -41,12 +41,12 @@ func createListServicesHandler(client *Client) mcp.ToolHandlerFor[ListServicesIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ListServicesInput]) (*mcp.CallToolResultFor[ListServicesOutput], error) {
 		data, err := client.Get(ctx, "core/service/search")
 		if err != nil {
-			return toolErrorfFor[ListServicesOutput]("서비스 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListServicesOutput]("failed to list services: %s", err.Error()), nil
 		}
 
 		var result SearchResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[ListServicesOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListServicesOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ListServicesOutput{
@@ -61,10 +61,10 @@ func createServiceActionHandler(client *Client) mcp.ToolHandlerFor[ServiceAction
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ServiceActionInput]) (*mcp.CallToolResultFor[ServiceActionOutput], error) {
 		input := params.Arguments
 		if input.Service == "" {
-			return toolErrorFor[ServiceActionOutput]("service 파라미터가 필요합니다"), nil
+			return toolErrorFor[ServiceActionOutput]("service parameter is required"), nil
 		}
 		if input.Action == "" {
-			return toolErrorFor[ServiceActionOutput]("action 파라미터가 필요합니다 (start, stop, restart, status)"), nil
+			return toolErrorFor[ServiceActionOutput]("action parameter is required (start, stop, restart, status)"), nil
 		}
 
 		// Map service names to API module paths
@@ -92,12 +92,12 @@ func createServiceActionHandler(client *Client) mcp.ToolHandlerFor[ServiceAction
 			data, err = client.Post(ctx, module+"/service/"+input.Action, nil)
 		}
 		if err != nil {
-			return toolErrorfFor[ServiceActionOutput]("서비스 %s %s 실패: %s", input.Service, input.Action, err.Error()), nil
+			return toolErrorfFor[ServiceActionOutput]("service %s %s failed: %s", input.Service, input.Action, err.Error()), nil
 		}
 
 		var result map[string]any
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[ServiceActionOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[ServiceActionOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ServiceActionOutput{Result: result}), nil
@@ -108,7 +108,7 @@ func createApplyChangesHandler(client *Client) mcp.ToolHandlerFor[ApplyChangesIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ApplyChangesInput]) (*mcp.CallToolResultFor[ApplyChangesOutput], error) {
 		input := params.Arguments
 		if input.Module == "" {
-			return toolErrorFor[ApplyChangesOutput]("module 파라미터가 필요합니다"), nil
+			return toolErrorFor[ApplyChangesOutput]("module parameter is required"), nil
 		}
 
 		// Map module names to reconfigure paths
@@ -127,12 +127,12 @@ func createApplyChangesHandler(client *Client) mcp.ToolHandlerFor[ApplyChangesIn
 
 		data, err := client.Post(ctx, path, nil)
 		if err != nil {
-			return toolErrorfFor[ApplyChangesOutput]("변경사항 적용 실패: %s", err.Error()), nil
+			return toolErrorfFor[ApplyChangesOutput]("failed to apply changes: %s", err.Error()), nil
 		}
 
 		var result map[string]any
 		if err := json.Unmarshal(data, &result); err != nil {
-			return toolErrorfFor[ApplyChangesOutput]("응답 파싱 실패: %s", err.Error()), nil
+			return toolErrorfFor[ApplyChangesOutput]("failed to parse response: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ApplyChangesOutput{Result: result}), nil
@@ -144,18 +144,18 @@ func createApplyChangesHandler(client *Client) mcp.ToolHandlerFor[ApplyChangesIn
 func registerServiceTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_list_services",
-		Description: "OPNsense에서 실행 중인 서비스 목록과 상태를 조회합니다.",
+		Description: "Lists running services and their status on OPNsense.",
 	}, createListServicesHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_service_action",
-		Description: "OPNsense 서비스를 제어합니다 (start, stop, restart, status).",
+		Description: "Controls an OPNsense service (start, stop, restart, status).",
 	}, createServiceActionHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "ops_apply_changes",
-		Description: "설정 변경사항을 적용합니다. 방화벽 규칙, DNS, WireGuard, HAProxy 등의 변경 후 반드시 호출해야 합니다.",
+		Description: "Applies configuration changes. Must be called after modifying firewall rules, DNS, WireGuard, HAProxy, etc.",
 	}, createApplyChangesHandler(client))
 
-	fmt.Println("OPNsense service tools registered: ops_list_services, ops_service_action, ops_apply_changes")
+	slog.Info("OPNsense service tools registered: ops_list_services, ops_service_action, ops_apply_changes")
 }

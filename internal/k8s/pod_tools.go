@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
@@ -13,7 +14,7 @@ import (
 
 // ListPodsInput contains optional namespace
 type ListPodsInput struct {
-	Namespace string `json:"namespace,omitempty" jsonschema:"네임스페이스 (비어있으면 모든 네임스페이스)"`
+	Namespace string `json:"namespace,omitempty" jsonschema:"Namespace (all namespaces if empty)"`
 }
 
 // ListPodsOutput contains list of pods
@@ -23,8 +24,8 @@ type ListPodsOutput struct {
 
 // PodStatusInput contains pod identifiers
 type PodStatusInput struct {
-	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
-	Name      string `json:"name" jsonschema:"Pod 이름"`
+	Namespace string `json:"namespace" jsonschema:"Namespace"`
+	Name      string `json:"name" jsonschema:"Pod name"`
 }
 
 // PodStatusOutput contains detailed pod status
@@ -34,10 +35,10 @@ type PodStatusOutput struct {
 
 // PodLogsInput contains parameters for pod logs
 type PodLogsInput struct {
-	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
-	Name      string `json:"name" jsonschema:"Pod 이름"`
-	Container string `json:"container,omitempty" jsonschema:"컨테이너 이름 (멀티 컨테이너 Pod인 경우)"`
-	TailLines int64  `json:"tail_lines,omitempty" jsonschema:"가져올 라인 수 (기본 100)"`
+	Namespace string `json:"namespace" jsonschema:"Namespace"`
+	Name      string `json:"name" jsonschema:"Pod name"`
+	Container string `json:"container,omitempty" jsonschema:"Container name (for multi-container Pods)"`
+	TailLines int64  `json:"tail_lines,omitempty" jsonschema:"Number of lines to retrieve (default 100)"`
 }
 
 // PodLogsOutput contains pod logs
@@ -59,7 +60,7 @@ func createListPodsHandler(client *Client) mcp.ToolHandlerFor[ListPodsInput, Lis
 
 		pods, err := client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			return toolErrorfFor[ListPodsOutput]("Pod 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListPodsOutput]("failed to list Pods: %s", err.Error()), nil
 		}
 
 		output := ListPodsOutput{
@@ -79,15 +80,15 @@ func createPodStatusHandler(client *Client) mcp.ToolHandlerFor[PodStatusInput, P
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[PodStatusInput]) (*mcp.CallToolResultFor[PodStatusOutput], error) {
 		input := params.Arguments
 		if input.Namespace == "" {
-			return toolErrorFor[PodStatusOutput]("namespace 파라미터가 필요합니다"), nil
+			return toolErrorFor[PodStatusOutput]("namespace parameter is required"), nil
 		}
 		if input.Name == "" {
-			return toolErrorFor[PodStatusOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[PodStatusOutput]("name parameter is required"), nil
 		}
 
 		pod, err := client.Clientset.CoreV1().Pods(input.Namespace).Get(ctx, input.Name, metav1.GetOptions{})
 		if err != nil {
-			return toolErrorfFor[PodStatusOutput]("Pod 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[PodStatusOutput]("failed to get Pod: %s", err.Error()), nil
 		}
 
 		info := convertPodToInfo(pod)
@@ -99,10 +100,10 @@ func createPodLogsHandler(client *Client) mcp.ToolHandlerFor[PodLogsInput, PodLo
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[PodLogsInput]) (*mcp.CallToolResultFor[PodLogsOutput], error) {
 		input := params.Arguments
 		if input.Namespace == "" {
-			return toolErrorFor[PodLogsOutput]("namespace 파라미터가 필요합니다"), nil
+			return toolErrorFor[PodLogsOutput]("namespace parameter is required"), nil
 		}
 		if input.Name == "" {
-			return toolErrorFor[PodLogsOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[PodLogsOutput]("name parameter is required"), nil
 		}
 
 		tailLines := input.TailLines
@@ -119,7 +120,7 @@ func createPodLogsHandler(client *Client) mcp.ToolHandlerFor[PodLogsInput, PodLo
 
 		logs, err := client.Clientset.CoreV1().Pods(input.Namespace).GetLogs(input.Name, opts).Do(ctx).Raw()
 		if err != nil {
-			return toolErrorfFor[PodLogsOutput]("Pod 로그 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[PodLogsOutput]("failed to get Pod logs: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(PodLogsOutput{
@@ -178,18 +179,18 @@ func convertPodToInfo(pod *corev1.Pod) PodInfo {
 func registerPodTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_list_pods",
-		Description: "Pod 목록을 조회합니다. 특정 네임스페이스 또는 모든 네임스페이스를 대상으로 합니다.",
+		Description: "Lists Pods in a specific namespace or across all namespaces.",
 	}, createListPodsHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_pod_status",
-		Description: "특정 Pod의 상세 상태를 조회합니다.",
+		Description: "Retrieves the detailed status of a specific Pod.",
 	}, createPodStatusHandler(client))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_pod_logs",
-		Description: "Pod의 로그를 조회합니다. 특정 컨테이너 지정 가능.",
+		Description: "Retrieves Pod logs. A specific container can be specified.",
 	}, createPodLogsHandler(client))
 
-	fmt.Println("Kubernetes pod tools registered: k8s_list_pods, k8s_pod_status, k8s_pod_logs")
+	slog.Info("Kubernetes pod tools registered: k8s_list_pods, k8s_pod_status, k8s_pod_logs")
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -15,9 +16,9 @@ import (
 
 // ScaleDeploymentInput contains parameters for scaling a deployment
 type ScaleDeploymentInput struct {
-	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
-	Name      string `json:"name" jsonschema:"Deployment 이름"`
-	Replicas  int32  `json:"replicas" jsonschema:"원하는 레플리카 수"`
+	Namespace string `json:"namespace" jsonschema:"Namespace"`
+	Name      string `json:"name" jsonschema:"Deployment name"`
+	Replicas  int32  `json:"replicas" jsonschema:"Desired number of replicas"`
 }
 
 // ScaleDeploymentOutput contains the result of scaling
@@ -31,8 +32,8 @@ type ScaleDeploymentOutput struct {
 
 // RestartDeploymentInput contains parameters for restarting a deployment
 type RestartDeploymentInput struct {
-	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
-	Name      string `json:"name" jsonschema:"Deployment 이름"`
+	Namespace string `json:"namespace" jsonschema:"Namespace"`
+	Name      string `json:"name" jsonschema:"Deployment name"`
 }
 
 // RestartDeploymentOutput contains the result of restarting
@@ -44,9 +45,9 @@ type RestartDeploymentOutput struct {
 
 // DeletePodInput contains parameters for deleting a pod
 type DeletePodInput struct {
-	Namespace string `json:"namespace" jsonschema:"네임스페이스"`
-	Name      string `json:"name" jsonschema:"Pod 이름"`
-	Force     bool   `json:"force,omitempty" jsonschema:"강제 삭제 여부 (GracePeriod=0)"`
+	Namespace string `json:"namespace" jsonschema:"Namespace"`
+	Name      string `json:"name" jsonschema:"Pod name"`
+	Force     bool   `json:"force,omitempty" jsonschema:"Force delete (GracePeriod=0)"`
 }
 
 // DeletePodOutput contains the result of deleting a pod
@@ -58,8 +59,8 @@ type DeletePodOutput struct {
 
 // CreateNamespaceInput contains parameters for creating a namespace
 type CreateNamespaceInput struct {
-	Name   string            `json:"name" jsonschema:"네임스페이스 이름"`
-	Labels map[string]string `json:"labels,omitempty" jsonschema:"레이블"`
+	Name   string            `json:"name" jsonschema:"Namespace name"`
+	Labels map[string]string `json:"labels,omitempty" jsonschema:"Labels"`
 }
 
 // CreateNamespaceOutput contains the result of creating a namespace
@@ -70,7 +71,7 @@ type CreateNamespaceOutput struct {
 
 // DeleteNamespaceInput contains parameters for deleting a namespace
 type DeleteNamespaceInput struct {
-	Name string `json:"name" jsonschema:"네임스페이스 이름"`
+	Name string `json:"name" jsonschema:"Namespace name"`
 }
 
 // DeleteNamespaceOutput contains the result of deleting a namespace
@@ -81,7 +82,7 @@ type DeleteNamespaceOutput struct {
 
 // CordonNodeInput contains parameters for cordoning a node
 type CordonNodeInput struct {
-	Node string `json:"node" jsonschema:"노드 이름"`
+	Node string `json:"node" jsonschema:"Node name"`
 }
 
 // CordonNodeOutput contains the result of cordoning
@@ -92,7 +93,7 @@ type CordonNodeOutput struct {
 
 // UncordonNodeInput contains parameters for uncordoning a node
 type UncordonNodeInput struct {
-	Node string `json:"node" jsonschema:"노드 이름"`
+	Node string `json:"node" jsonschema:"Node name"`
 }
 
 // UncordonNodeOutput contains the result of uncordoning
@@ -107,19 +108,19 @@ func createScaleDeploymentHandler(client *Client) mcp.ToolHandlerFor[ScaleDeploy
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ScaleDeploymentInput]) (*mcp.CallToolResultFor[ScaleDeploymentOutput], error) {
 		input := params.Arguments
 		if input.Namespace == "" {
-			return toolErrorFor[ScaleDeploymentOutput]("namespace 파라미터가 필요합니다"), nil
+			return toolErrorFor[ScaleDeploymentOutput]("namespace parameter is required"), nil
 		}
 		if input.Name == "" {
-			return toolErrorFor[ScaleDeploymentOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[ScaleDeploymentOutput]("name parameter is required"), nil
 		}
 		if input.Replicas < 0 {
-			return toolErrorFor[ScaleDeploymentOutput]("replicas는 0 이상이어야 합니다"), nil
+			return toolErrorFor[ScaleDeploymentOutput]("replicas must be 0 or greater"), nil
 		}
 
 		// Get current deployment
 		deploy, err := client.Clientset.AppsV1().Deployments(input.Namespace).Get(ctx, input.Name, metav1.GetOptions{})
 		if err != nil {
-			return toolErrorfFor[ScaleDeploymentOutput]("Deployment 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ScaleDeploymentOutput]("failed to query deployment: %s", err.Error()), nil
 		}
 
 		var previousReplicas int32 = 0
@@ -130,13 +131,13 @@ func createScaleDeploymentHandler(client *Client) mcp.ToolHandlerFor[ScaleDeploy
 		// Scale the deployment
 		scale, err := client.Clientset.AppsV1().Deployments(input.Namespace).GetScale(ctx, input.Name, metav1.GetOptions{})
 		if err != nil {
-			return toolErrorfFor[ScaleDeploymentOutput]("Scale 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ScaleDeploymentOutput]("failed to get scale: %s", err.Error()), nil
 		}
 
 		scale.Spec.Replicas = input.Replicas
 		_, err = client.Clientset.AppsV1().Deployments(input.Namespace).UpdateScale(ctx, input.Name, scale, metav1.UpdateOptions{})
 		if err != nil {
-			return toolErrorfFor[ScaleDeploymentOutput]("Scale 업데이트 실패: %s", err.Error()), nil
+			return toolErrorfFor[ScaleDeploymentOutput]("failed to update scale: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ScaleDeploymentOutput{
@@ -153,10 +154,10 @@ func createRestartDeploymentHandler(client *Client) mcp.ToolHandlerFor[RestartDe
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[RestartDeploymentInput]) (*mcp.CallToolResultFor[RestartDeploymentOutput], error) {
 		input := params.Arguments
 		if input.Namespace == "" {
-			return toolErrorFor[RestartDeploymentOutput]("namespace 파라미터가 필요합니다"), nil
+			return toolErrorFor[RestartDeploymentOutput]("namespace parameter is required"), nil
 		}
 		if input.Name == "" {
-			return toolErrorFor[RestartDeploymentOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[RestartDeploymentOutput]("name parameter is required"), nil
 		}
 
 		// Patch the deployment with a restart annotation (same as kubectl rollout restart)
@@ -174,7 +175,7 @@ func createRestartDeploymentHandler(client *Client) mcp.ToolHandlerFor[RestartDe
 
 		patchBytes, err := json.Marshal(patch)
 		if err != nil {
-			return toolErrorfFor[RestartDeploymentOutput]("Patch 생성 실패: %s", err.Error()), nil
+			return toolErrorfFor[RestartDeploymentOutput]("failed to create patch: %s", err.Error()), nil
 		}
 
 		_, err = client.Clientset.AppsV1().Deployments(input.Namespace).Patch(
@@ -185,7 +186,7 @@ func createRestartDeploymentHandler(client *Client) mcp.ToolHandlerFor[RestartDe
 			metav1.PatchOptions{},
 		)
 		if err != nil {
-			return toolErrorfFor[RestartDeploymentOutput]("Deployment 재시작 실패: %s", err.Error()), nil
+			return toolErrorfFor[RestartDeploymentOutput]("failed to restart deployment: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(RestartDeploymentOutput{
@@ -200,10 +201,10 @@ func createDeletePodHandler(client *Client) mcp.ToolHandlerFor[DeletePodInput, D
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[DeletePodInput]) (*mcp.CallToolResultFor[DeletePodOutput], error) {
 		input := params.Arguments
 		if input.Namespace == "" {
-			return toolErrorFor[DeletePodOutput]("namespace 파라미터가 필요합니다"), nil
+			return toolErrorFor[DeletePodOutput]("namespace parameter is required"), nil
 		}
 		if input.Name == "" {
-			return toolErrorFor[DeletePodOutput]("name 파라미터가 필요합니다"), nil
+			return toolErrorFor[DeletePodOutput]("name parameter is required"), nil
 		}
 
 		deleteOptions := metav1.DeleteOptions{}
@@ -214,7 +215,7 @@ func createDeletePodHandler(client *Client) mcp.ToolHandlerFor[DeletePodInput, D
 
 		err := client.Clientset.CoreV1().Pods(input.Namespace).Delete(ctx, input.Name, deleteOptions)
 		if err != nil {
-			return toolErrorfFor[DeletePodOutput]("Pod 삭제 실패: %s", err.Error()), nil
+			return toolErrorfFor[DeletePodOutput]("failed to delete pod: %s", err.Error()), nil
 		}
 
 		forceMsg := ""
@@ -234,7 +235,7 @@ func createCordonNodeHandler(client *Client) mcp.ToolHandlerFor[CordonNodeInput,
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[CordonNodeInput]) (*mcp.CallToolResultFor[CordonNodeOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[CordonNodeOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[CordonNodeOutput]("node parameter is required"), nil
 		}
 
 		// Patch the node to set unschedulable = true
@@ -247,7 +248,7 @@ func createCordonNodeHandler(client *Client) mcp.ToolHandlerFor[CordonNodeInput,
 			metav1.PatchOptions{},
 		)
 		if err != nil {
-			return toolErrorfFor[CordonNodeOutput]("노드 cordon 실패: %s", err.Error()), nil
+			return toolErrorfFor[CordonNodeOutput]("failed to cordon node: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(CordonNodeOutput{
@@ -261,7 +262,7 @@ func createUncordonNodeHandler(client *Client) mcp.ToolHandlerFor[UncordonNodeIn
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[UncordonNodeInput]) (*mcp.CallToolResultFor[UncordonNodeOutput], error) {
 		input := params.Arguments
 		if input.Node == "" {
-			return toolErrorFor[UncordonNodeOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[UncordonNodeOutput]("node parameter is required"), nil
 		}
 
 		// Patch the node to set unschedulable = false
@@ -274,7 +275,7 @@ func createUncordonNodeHandler(client *Client) mcp.ToolHandlerFor[UncordonNodeIn
 			metav1.PatchOptions{},
 		)
 		if err != nil {
-			return toolErrorfFor[UncordonNodeOutput]("노드 uncordon 실패: %s", err.Error()), nil
+			return toolErrorfFor[UncordonNodeOutput]("failed to uncordon node: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(UncordonNodeOutput{
@@ -290,32 +291,32 @@ func RegisterActionTools(server *mcp.Server, client *Client) {
 	// k8s_scale_deployment
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_scale_deployment",
-		Description: "Deployment의 레플리카 수를 변경합니다.",
+		Description: "Scales the number of replicas for a deployment.",
 	}, createScaleDeploymentHandler(client))
 
 	// k8s_restart_deployment
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_restart_deployment",
-		Description: "Deployment를 재시작합니다 (rollout restart).",
+		Description: "Restarts a deployment (rollout restart).",
 	}, createRestartDeploymentHandler(client))
 
 	// k8s_delete_pod
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_delete_pod",
-		Description: "Pod를 삭제합니다. force 옵션으로 강제 삭제 가능.",
+		Description: "Deletes a pod. Force delete available with force option.",
 	}, createDeletePodHandler(client))
 
 	// k8s_cordon_node
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_cordon_node",
-		Description: "노드를 cordon하여 새로운 Pod가 스케줄되지 않도록 합니다.",
+		Description: "Cordons a node to prevent new pods from being scheduled.",
 	}, createCordonNodeHandler(client))
 
 	// k8s_uncordon_node
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_uncordon_node",
-		Description: "노드를 uncordon하여 Pod 스케줄링을 다시 허용합니다.",
+		Description: "Uncordons a node to allow pod scheduling again.",
 	}, createUncordonNodeHandler(client))
 
-	fmt.Println("Kubernetes action tools registered: k8s_scale_deployment, k8s_restart_deployment, k8s_delete_pod, k8s_cordon_node, k8s_uncordon_node")
+	slog.Info("Kubernetes action tools registered: k8s_scale_deployment, k8s_restart_deployment, k8s_delete_pod, k8s_cordon_node, k8s_uncordon_node")
 }

@@ -2,7 +2,7 @@ package k8s
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,12 +24,12 @@ func createClusterInfoHandler(client *Client) mcp.ToolHandlerFor[ClusterInfoInpu
 	return func(ctx context.Context, ss *mcp.ServerSession, params *mcp.CallToolParamsFor[ClusterInfoInput]) (*mcp.CallToolResultFor[ClusterInfoOutput], error) {
 		version, err := client.Clientset.Discovery().ServerVersion()
 		if err != nil {
-			return toolErrorfFor[ClusterInfoOutput]("클러스터 버전 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ClusterInfoOutput]("failed to get cluster version: %s", err.Error()), nil
 		}
 
 		nodes, err := client.Clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 		if err != nil {
-			return toolErrorfFor[ClusterInfoOutput]("노드 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ClusterInfoOutput]("failed to list nodes: %s", err.Error()), nil
 		}
 
 		return toolSuccessFor(ClusterInfoOutput{
@@ -47,8 +47,8 @@ func createClusterInfoHandler(client *Client) mcp.ToolHandlerFor[ClusterInfoInpu
 func registerClusterTools(server *mcp.Server, client *Client) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "k8s_cluster_info",
-		Description: "Kubernetes 클러스터 정보를 조회합니다.",
+		Description: "Retrieves Kubernetes cluster information.",
 	}, createClusterInfoHandler(client))
 
-	fmt.Println("Kubernetes cluster tools registered: k8s_cluster_info")
+	slog.Info("Kubernetes cluster tools registered: k8s_cluster_info")
 }

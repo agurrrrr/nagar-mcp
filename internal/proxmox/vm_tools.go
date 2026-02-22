@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -11,7 +12,7 @@ import (
 
 // ListVMsInput contains the node name
 type ListVMsInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 }
 
 // ListVMsOutput contains the list of VMs
@@ -21,7 +22,7 @@ type ListVMsOutput struct {
 
 // VMStatusInput contains node and vmid
 type VMStatusInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
@@ -47,7 +48,7 @@ type VMStatusOutput struct {
 
 // VMConfigInput contains node and vmid
 type VMConfigInput struct {
-	Node string `json:"node" jsonschema:"Proxmox 노드 이름"`
+	Node string `json:"node" jsonschema:"Proxmox node name"`
 	VMID int    `json:"vmid" jsonschema:"VM ID"`
 }
 
@@ -92,17 +93,17 @@ func createListVMsHandler(client *Client) mcp.ToolHandlerFor[ListVMsInput, ListV
 		input := params.Arguments
 
 		if input.Node == "" {
-			return toolErrorFor[ListVMsOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[ListVMsOutput]("node parameter is required"), nil
 		}
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
-			return toolErrorfFor[ListVMsOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListVMsOutput]("failed to query node: %s", err.Error()), nil
 		}
 
 		vms, err := node.VirtualMachines(ctx)
 		if err != nil {
-			return toolErrorfFor[ListVMsOutput]("VM 목록 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[ListVMsOutput]("failed to list VMs: %s", err.Error()), nil
 		}
 
 		output := ListVMsOutput{
@@ -137,20 +138,20 @@ func createVMStatusHandler(client *Client) mcp.ToolHandlerFor[VMStatusInput, VMS
 		input := params.Arguments
 
 		if input.Node == "" {
-			return toolErrorFor[VMStatusOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[VMStatusOutput]("node parameter is required"), nil
 		}
 		if input.VMID == 0 {
-			return toolErrorFor[VMStatusOutput]("vmid 파라미터가 필요합니다"), nil
+			return toolErrorFor[VMStatusOutput]("vmid parameter is required"), nil
 		}
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
-			return toolErrorfFor[VMStatusOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[VMStatusOutput]("failed to query node: %s", err.Error()), nil
 		}
 
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
-			return toolErrorfFor[VMStatusOutput]("VM 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[VMStatusOutput]("failed to query VM: %s", err.Error()), nil
 		}
 
 		output := VMStatusOutput{
@@ -181,26 +182,26 @@ func createVMConfigHandler(client *Client) mcp.ToolHandlerFor[VMConfigInput, VMC
 		input := params.Arguments
 
 		if input.Node == "" {
-			return toolErrorFor[VMConfigOutput]("node 파라미터가 필요합니다"), nil
+			return toolErrorFor[VMConfigOutput]("node parameter is required"), nil
 		}
 		if input.VMID == 0 {
-			return toolErrorFor[VMConfigOutput]("vmid 파라미터가 필요합니다"), nil
+			return toolErrorFor[VMConfigOutput]("vmid parameter is required"), nil
 		}
 
 		node, err := client.Node(ctx, input.Node)
 		if err != nil {
-			return toolErrorfFor[VMConfigOutput]("노드 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[VMConfigOutput]("failed to query node: %s", err.Error()), nil
 		}
 
 		vm, err := node.VirtualMachine(ctx, input.VMID)
 		if err != nil {
-			return toolErrorfFor[VMConfigOutput]("VM 조회 실패: %s", err.Error()), nil
+			return toolErrorfFor[VMConfigOutput]("failed to query VM: %s", err.Error()), nil
 		}
 
 		// VirtualMachineConfig is embedded in VirtualMachine
 		config := vm.VirtualMachineConfig
 		if config == nil {
-			return toolErrorFor[VMConfigOutput]("VM 설정을 가져올 수 없습니다"), nil
+			return toolErrorFor[VMConfigOutput]("unable to retrieve VM configuration"), nil
 		}
 
 		output := VMConfigOutput{
@@ -224,20 +225,20 @@ func registerVMTools(server *mcp.Server, client *Client) {
 	// pve_list_vms
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_list_vms",
-		Description: "특정 노드의 모든 QEMU VM 목록을 조회합니다. 각 VM의 상태, CPU, 메모리, 디스크 사용량 정보를 포함합니다.",
+		Description: "Lists all QEMU VMs on a specific node. Includes status, CPU, memory, and disk usage for each VM.",
 	}, createListVMsHandler(client))
 
 	// pve_vm_status
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_status",
-		Description: "특정 VM의 상세 상태를 조회합니다. 실행 상태, 리소스 사용량, 네트워크 I/O 등의 정보를 제공합니다.",
+		Description: "Retrieves detailed status of a specific VM. Provides runtime status, resource usage, network I/O, and more.",
 	}, createVMStatusHandler(client))
 
 	// pve_vm_config
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "pve_vm_config",
-		Description: "특정 VM의 설정을 조회합니다. CPU, 메모리, 디스크, 네트워크 설정 등의 정보를 제공합니다.",
+		Description: "Retrieves the configuration of a specific VM. Provides CPU, memory, disk, and network configuration details.",
 	}, createVMConfigHandler(client))
 
-	fmt.Println("VM tools registered: pve_list_vms, pve_vm_status, pve_vm_config")
+	slog.Info("VM tools registered: pve_list_vms, pve_vm_status, pve_vm_config")
 }

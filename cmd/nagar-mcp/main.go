@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"nagar-mcp/internal/config"
-	"nagar-mcp/internal/server"
+	"github.com/agurrrrr/nagar-mcp/internal/config"
+	"github.com/agurrrrr/nagar-mcp/internal/server"
 )
 
 func main() {
