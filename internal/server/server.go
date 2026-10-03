@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -17,6 +18,7 @@ import (
 // Server wraps the MCP server with providers
 type Server struct {
 	mcpServer *mcp.Server
+	impl      *mcp.Implementation
 	config    *config.Config
 	pveClient *proxmox.Client
 	k8sClient *k8s.Client
@@ -26,13 +28,15 @@ type Server struct {
 // New creates a new MCP server with all providers
 func New(cfg *config.Config) (*Server, error) {
 	// Create MCP server
-	mcpServer := mcp.NewServer(&mcp.Implementation{
+	impl := &mcp.Implementation{
 		Name:    cfg.Server.Name,
 		Version: cfg.Server.Version,
-	}, nil)
+	}
+	mcpServer := mcp.NewServer(impl, nil)
 
 	server := &Server{
 		mcpServer: mcpServer,
+		impl:      impl,
 		config:    cfg,
 	}
 
@@ -71,6 +75,12 @@ func New(cfg *config.Config) (*Server, error) {
 
 	// Register tools
 	server.registerTools()
+
+	// tereo may only call the whitelisted tools. This instance is the tereo
+	// instance, so the whitelist is applied unconditionally.
+	if _, err := ApplyWhitelist(mcpServer); err != nil {
+		slog.Warn("whitelist could not be verified", "error", err)
+	}
 
 	return server, nil
 }
@@ -114,22 +124,42 @@ func (s *Server) runStdio(ctx context.Context) error {
 	return s.mcpServer.Run(ctx, mcp.NewStdioTransport())
 }
 
-// runHTTP runs the server in HTTP mode
+// runHTTP runs the server in HTTP mode. Two paths are served on /mcp:
+//   - flat JSON-RPC POST when Accept does not ask for text/event-stream,
+//   - the SDK streamable handler when Accept does ask for it.
+//
+// tereo sends a plain POST without an Accept header, so it takes the flat path.
+// Both paths are wrapped by the Bearer middleware.
 func (s *Server) runHTTP(ctx context.Context) error {
-	handler := mcp.NewStreamableHTTPHandler(
+	streamable := mcp.NewStreamableHTTPHandler(
 		func(r *http.Request) *mcp.Server {
 			return s.mcpServer
 		},
 		nil,
 	)
+	flat := NewFlatHandler(s.mcpServer, s.impl)
 
-	http.Handle("/mcp", handler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
+		if AcceptsEventStream(r.Header.Get("Accept")) {
+			streamable.ServeHTTP(w, r)
+			return
+		}
+		flat.ServeHTTP(w, r)
+	})
 
-	slog.Info("starting MCP server in HTTP mode", "addr", s.config.Server.HTTPAddr)
+	if s.config.Server.Auth.Bearer == "" {
+		slog.Warn("bearer token is not set; HTTP mode relies on the loopback bind only")
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- http.ListenAndServe(s.config.Server.HTTPAddr, nil)
+		server := &http.Server{
+			Addr:              s.config.Server.HTTPAddr,
+			Handler:           BearerMiddleware(s.config.Server.Auth.Bearer, mux),
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		errCh <- server.ListenAndServe()
 	}()
 
 	select {

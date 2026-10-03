@@ -26,3 +26,12 @@ server:
   http_addr: ":9090"                     # Bind address for http mode
   name: "nagar-mcp"
   version: "0.1.0"
+
+  # HTTP mode authentication. Environment variable override: NAGAR_BEARER.
+  # Leave the value empty on purpose - do not put a real token in this file.
+  # The repo never stores secret values. Place the real token in config.yaml
+  # (gitignored) or in the NAGAR_BEARER environment variable.
+  # When bearer is empty, the server does not authenticate and relies on the
+  # loopback bind only (127.0.0.1). Startup logs one WARN in that case.
+  auth:
+    bearer: ""                           # placeholder - set outside the repo

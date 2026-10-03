@@ -41,10 +41,17 @@ type OPNsenseConfig struct {
 
 // ServerConfig holds MCP server settings
 type ServerConfig struct {
-	Transport string `yaml:"transport"`
-	HTTPAddr  string `yaml:"http_addr"`
-	Name      string `yaml:"name"`
-	Version   string `yaml:"version"`
+	Transport string     `yaml:"transport"`
+	HTTPAddr  string     `yaml:"http_addr"`
+	Name      string     `yaml:"name"`
+	Version   string     `yaml:"version"`
+	Auth      AuthConfig `yaml:"auth"`
+}
+
+// AuthConfig holds HTTP authentication settings. Bearer is empty by default.
+// When it is empty, the server trusts the loopback bind only.
+type AuthConfig struct {
+	Bearer string `yaml:"bearer"`
 }
 
 // Load reads and parses the configuration file, then applies environment variable overrides
@@ -115,6 +122,9 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if v := os.Getenv("MCP_HTTP_ADDR"); v != "" {
 		c.Server.HTTPAddr = v
+	}
+	if v := os.Getenv("NAGAR_BEARER"); v != "" {
+		c.Server.Auth.Bearer = v
 	}
 }
 
