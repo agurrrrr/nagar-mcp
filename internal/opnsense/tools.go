@@ -32,6 +32,7 @@ func toolSuccessFor[Out any](output Out) *mcp.CallToolResultFor[Out] {
 func RegisterTools(server *mcp.Server, client *Client) {
 	registerSystemTools(server, client)
 	registerFirewallTools(server, client)
+	registerAliasTools(server, client)
 	registerDHCPTools(server, client)
 	registerDNSTools(server, client)
 	registerServiceTools(server, client)
