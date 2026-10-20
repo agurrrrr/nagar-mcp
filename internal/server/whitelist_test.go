@@ -7,14 +7,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// Test_AllowedTools_set_tereoenum15개는제외항목확인 verifies the whitelist size and
+// Test_AllowedTools_set_tereoenum21개는제외항목확인 verifies the whitelist size and
 // the missing tereo enum entry.
-func Test_AllowedTools_set_tereoenum16중미등록항목제외15개(t *testing.T) {
+func Test_AllowedTools_set_tereoenum21중미등록항목제외항확인(t *testing.T) {
 	tests := []struct {
 		name string
 		want int
 	}{
-		{"허용셋 크기", 15},
+		{"허용셋 크기", 21},
 	}
 
 	for _, tt := range tests {
@@ -34,7 +34,17 @@ func Test_AllowedTools_set_tereoenum16중미등록항목제외15개(t *testing.T
 		}
 	}
 
-	for _, name := range []string{"pve_list_vms", "ops_list_firewall_rules", "k8s_pod_logs"} {
+	// alias 도구 6개는 허용셋에 있어야 한다 (2026-10-19 확장).
+	for _, name := range []string{
+		"ops_list_firewall_aliases", "ops_get_firewall_alias", "ops_add_firewall_alias",
+		"ops_update_firewall_alias", "ops_delete_firewall_alias", "ops_toggle_firewall_alias",
+	} {
+		if !IsAllowed(name) {
+			t.Errorf("IsAllowed(%q) = false, want true (alias 도구 확장)", name)
+		}
+	}
+
+		for _, name := range []string{"pve_list_vms", "ops_list_firewall_rules", "k8s_pod_logs"} {
 		if IsAllowed(name) {
 			t.Errorf("IsAllowed(%q) = true, want false", name)
 		}

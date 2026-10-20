@@ -10,11 +10,15 @@ import (
 
 // AllowedTools는 tereo의 NagarTool enum과 동일한 허용셋이다.
 //
-// tereo enum은 16개다( Stereo/crates/tereo-adapters/src/nagar.rs). nagar-mcp에
-// 등록된 도구와 대조하면 15개만 존재한다. pve_vm_snapshot_delete는 nagar-mcp에
-// 등록되어 있지 않다(pve_vm_snapshot_create, pve_vm_snapshot_list만 있다).
-// 따라서 허용셋은 15개다. tereo enum의 정합성 문제는 보고한다 — enum은 축소하지
-// 않는다. 호출 시 unknown tool(-32602)로 응답한다.
+// tereo enum은 22개다(crates/tereo-adapters/src/nagar.rs). nagar-mcp에 등록된
+// 도구와 대조하면 21개만 존재한다. pve_vm_snapshot_delete는 nagar-mcp에 등록되어
+// 있지 않다(pve_vm_snapshot_create, pve_vm_snapshot_list만 있다). 따라서 허용셋은
+// 21개다. tereo enum의 정합성 문제는 보고한다 — enum은 축소하지 않는다. 호출 시
+// unknown tool(-32602)로 응답한다.
+//
+// 2026-10-19: firewall alias 도구 6개를 더했다. DESIGN.md §11의 2단계 전환
+// (fw_block_src를 alias `tereo_block` 기반 실차단으로 옮기는 경로)과 TTL 갱신이
+// alias를 필요로 한다.
 var AllowedTools = []string{
 	// OPNsense (ops_*)
 	"ops_add_firewall_rule",
@@ -23,6 +27,13 @@ var AllowedTools = []string{
 	"ops_add_dns_override",
 	"ops_delete_dns_override",
 	"ops_firmware_status",
+	// OPNsense firewall alias — tereo의 alias 차단 경로·TTL 갱신 대상 (2026-10-19)
+	"ops_list_firewall_aliases",
+	"ops_get_firewall_alias",
+	"ops_add_firewall_alias",
+	"ops_update_firewall_alias",
+	"ops_delete_firewall_alias",
+	"ops_toggle_firewall_alias",
 	// K8s (k8s_*)
 	"k8s_scale_deployment",
 	"k8s_deployment_status",
