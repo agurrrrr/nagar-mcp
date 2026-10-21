@@ -7,14 +7,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// Test_AllowedTools_set_tereoenum21개는제외항목확인 verifies the whitelist size and
-// the missing tereo enum entry.
-func Test_AllowedTools_set_tereoenum21중미등록항목제외항확인(t *testing.T) {
+// Test_AllowedTools_set_tereoenum23중미등록항목제외항확인 verifies the whitelist size and
+// the missing tereo enum entry (pve_vm_snapshot_delete).
+func Test_AllowedTools_set_tereoenum23중미등록항목제외항확인(t *testing.T) {
 	tests := []struct {
 		name string
 		want int
 	}{
-		{"허용셋 크기", 21},
+		{"허용셋 크기", 22},
 	}
 
 	for _, tt := range tests {
@@ -34,6 +34,11 @@ func Test_AllowedTools_set_tereoenum21중미등록항목제외항확인(t *testi
 		}
 	}
 
+	// ops_list_firewall_rules(읽기 전용)는 허용셋에 있어야 한다 (이슈 #529).
+	if !IsAllowed("ops_list_firewall_rules") {
+		t.Errorf("IsAllowed(%q) = false, want true (고아 차단 탐지, #529)", "ops_list_firewall_rules")
+	}
+
 	// alias 도구 6개는 허용셋에 있어야 한다 (2026-10-19 확장).
 	for _, name := range []string{
 		"ops_list_firewall_aliases", "ops_get_firewall_alias", "ops_add_firewall_alias",
@@ -44,7 +49,8 @@ func Test_AllowedTools_set_tereoenum21중미등록항목제외항확인(t *testi
 		}
 	}
 
-		for _, name := range []string{"pve_list_vms", "ops_list_firewall_rules", "k8s_pod_logs"} {
+	// 미허용 도구 확인: nagar-mcp에 등록돼 있어도 tereo는 쓸 수 없다.
+	for _, name := range []string{"pve_list_vms", "ops_get_firewall_rule", "k8s_pod_logs"} {
 		if IsAllowed(name) {
 			t.Errorf("IsAllowed(%q) = true, want false", name)
 		}
@@ -56,7 +62,7 @@ func Test_ApplyWhitelist_미허용도구제거(t *testing.T) {
 	s := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0.1.0"}, nil)
 
 	allowed := "ops_firmware_status"
-	removed := "ops_list_firewall_rules"
+	removed := "ops_get_firewall_rule" // nagar-mcp에 등록되지만 tereo whitelist 밖
 
 	addTestTool(s, allowed)
 	addTestTool(s, removed)

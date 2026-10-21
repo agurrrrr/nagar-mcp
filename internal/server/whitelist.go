@@ -10,20 +10,27 @@ import (
 
 // AllowedTools는 tereo의 NagarTool enum과 동일한 허용셋이다.
 //
-// tereo enum은 22개다(crates/tereo-adapters/src/nagar.rs). nagar-mcp에 등록된
-// 도구와 대조하면 21개만 존재한다. pve_vm_snapshot_delete는 nagar-mcp에 등록되어
+// tereo enum은 23개다(crates/tereo-adapters/src/nagar.rs). nagar-mcp에 등록된
+// 도구와 대조하면 22개만 존재한다. pve_vm_snapshot_delete는 nagar-mcp에 등록되어
 // 있지 않다(pve_vm_snapshot_create, pve_vm_snapshot_list만 있다). 따라서 허용셋은
-// 21개다. tereo enum의 정합성 문제는 보고한다 — enum은 축소하지 않는다. 호출 시
+// 22개다. tereo enum의 정합성 문제는 보고한다 — enum은 축소하지 않는다. 호출 시
 // unknown tool(-32602)로 응답한다.
 //
 // 2026-10-19: firewall alias 도구 6개를 더했다. DESIGN.md §11의 2단계 전환
 // (fw_block_src를 alias `tereo_block` 기반 실차단으로 옮기는 경로)과 TTL 갱신이
 // alias를 필요로 한다.
+//
+// 2026-10-21 (이슈 #529): ops_list_firewall_rules(읽기 전용)를 더했다. tereo의
+// TTL sweep이 고아 차단 탐지를 한다. OPNsense에 남은 tereo 규칙(description
+// `tereo-ttl=<unix> inc=<action_id>`)을 control.db의 ttl_timers 대장과 대조한다.
+// 쓰기 도구는 더하지 않았다 — 탐지에 필요한 것은 list뿐이다.
 var AllowedTools = []string{
 	// OPNsense (ops_*)
 	"ops_add_firewall_rule",
 	"ops_delete_firewall_rule",
 	"ops_apply_changes",
+	// 읽기 전용 (이슈 #529): 고아 차단 탐지가 규칙 목록과 TTL 대장을 대조한다.
+	"ops_list_firewall_rules",
 	"ops_add_dns_override",
 	"ops_delete_dns_override",
 	"ops_firmware_status",

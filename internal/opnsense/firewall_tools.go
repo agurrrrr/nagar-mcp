@@ -12,6 +12,15 @@ import (
 
 type ListFirewallRulesInput struct{}
 
+// ListFirewallRulesOutput은 searchRule의 원시 행을 그대로 담는다.
+//
+// 필드를 구조체로 자르지 않는다. OPNsense filter/searchRule는 행마다 uuid,
+// description, enabled, source_net, destination_net, interface, action,
+// sequence를 반환하고, tereo의 고아 차단 탐지(이슈 #529)는 그중 uuid·
+// description·enabled·source_net·interface·action을 읽는다. map[string]any가
+// 원시 JSON을 그대로 통과시키므로 빠지는 필드가 없다. 2026-10-21 실측: 이
+// 방화벽의 filter 규칙은 0건이라(searchRule total=0, filter/get rules.rule=[])
+// 실제 행으로 필드를 확인할 수는 없었다. raw pass-through가 결론이다.
 type ListFirewallRulesOutput struct {
 	Rules    []map[string]any `json:"rules"`
 	Total    int              `json:"total"`
