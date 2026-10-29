@@ -46,6 +46,11 @@ type AddFirewallRuleInput struct {
 	Destination string `json:"destination_net,omitempty" jsonschema:"Destination (any, IP/CIDR, alias)"`
 	DstPort     string `json:"destination_port,omitempty" jsonschema:"Destination port (e.g. 80, 443, 8080-8090)"`
 	Description string `json:"description,omitempty" jsonschema:"Rule description"`
+	// Quick와 Sequence는 값이 있을 때만 rule 객체에 싣는다. OPNsense setNodes는
+	// 빈 문자열도 값으로 받아 기본값(quick=1, sequence=max+100)을 덮어쓴다.
+	// quick=""는 "A value is required" 검증 실패가 되므로 빈 값은 보내지 않는다.
+	Quick    string `json:"quick,omitempty" jsonschema:"Quick match (1 or 0, OPNsense default: 1). 1 stops evaluation at this rule"`
+	Sequence string `json:"sequence,omitempty" jsonschema:"Sequence inside the rule priority group (1-999999, OPNsense default: last + 100)"`
 }
 
 type AddFirewallRuleOutput struct {
@@ -120,33 +125,7 @@ func createAddFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[AddFirewall
 			return toolErrorFor[AddFirewallRuleOutput]("action parameter is required (pass, block, reject)"), nil
 		}
 
-		// Set defaults
-		if input.Enabled == "" {
-			input.Enabled = "1"
-		}
-		if input.Direction == "" {
-			input.Direction = "in"
-		}
-		if input.IPProtocol == "" {
-			input.IPProtocol = "inet"
-		}
-
-		body := map[string]any{
-			"rule": map[string]any{
-				"enabled":         input.Enabled,
-				"action":          input.Action,
-				"direction":       input.Direction,
-				"ipprotocol":      input.IPProtocol,
-				"protocol":        input.Protocol,
-				"interface":       input.Interface,
-				"source_net":      input.Source,
-				"destination_net": input.Destination,
-				"destination_port": input.DstPort,
-				"description":     input.Description,
-			},
-		}
-
-		data, err := client.Post(ctx, "firewall/filter/addRule", body)
+		data, err := client.Post(ctx, "firewall/filter/addRule", addFirewallRuleBody(input))
 		if err != nil {
 			return toolErrorfFor[AddFirewallRuleOutput]("failed to add rule: %s", err.Error()), nil
 		}
@@ -161,6 +140,42 @@ func createAddFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[AddFirewall
 			UUID:   result.UUID,
 		}), nil
 	}
+}
+
+// addFirewallRuleBody builds the firewall/filter/addRule request body.
+//
+// 기존 필드는 빈 값이어도 그대로 싣는다(기존 호출자와 같은 본문). quick과
+// sequence는 값이 있을 때만 싣는다 — 빈 값을 보내면 OPNsense 기본값이 덮어써진다.
+func addFirewallRuleBody(input AddFirewallRuleInput) map[string]any {
+	if input.Enabled == "" {
+		input.Enabled = "1"
+	}
+	if input.Direction == "" {
+		input.Direction = "in"
+	}
+	if input.IPProtocol == "" {
+		input.IPProtocol = "inet"
+	}
+
+	rule := map[string]any{
+		"enabled":          input.Enabled,
+		"action":           input.Action,
+		"direction":        input.Direction,
+		"ipprotocol":       input.IPProtocol,
+		"protocol":         input.Protocol,
+		"interface":        input.Interface,
+		"source_net":       input.Source,
+		"destination_net":  input.Destination,
+		"destination_port": input.DstPort,
+		"description":      input.Description,
+	}
+	if input.Quick != "" {
+		rule["quick"] = input.Quick
+	}
+	if input.Sequence != "" {
+		rule["sequence"] = input.Sequence
+	}
+	return map[string]any{"rule": rule}
 }
 
 func createToggleFirewallRuleHandler(client *Client) mcp.ToolHandlerFor[ToggleFirewallRuleInput, ToggleFirewallRuleOutput] {
